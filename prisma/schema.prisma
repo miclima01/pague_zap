@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  
+  // Credenciais WhatsApp Business API
+  whatsappPhoneNumberId String?
+  whatsappToken         String?
+  whatsappBusinessId    String?
+  
+  // Template configurado
+  templateName          String?   @default("paymentswa")
+  templateLanguage      String?   @default("pt_BR")
+  
+  // Logo/Imagem padrão para cobranças
+  defaultImageUrl       String?
+  
+  // Configurações de Gateway
+  pixKey                String?
+  pixKeyType            String?   // EVP, CPF, CNPJ, EMAIL, PHONE
+  merchantName          String?
+  
+  // Mercado Pago (para link de pagamento)
+  mercadoPagoToken      String?
+  mercadoPagoPublicKey  String?
+  
+  createdAt     DateTime  @default(now())
+  charges       Charge[]
+  apiLogs       ApiLog[]
+}
+
+model Charge {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Dados do cliente
+  customerName    String
+  customerPhone   String   // Formato: 5585999999999
+  customerEmail   String?
+  
+  // Dados da cobrança
+  amount          Float
+  description     String
+  productName     String
+  dueDate         DateTime?
+  
+  // Imagem do produto/serviço
+  imageUrl        String?
+  
+  // Agendamento
+  scheduleType    ScheduleType
+  scheduleDay     Int?          // Dia do mês (1-31) para cobranças recorrentes
+  nextSendDate    DateTime?
+  
+  // Status
+  status          ChargeStatus  @default(PENDING)
+  sentAt          DateTime?
+  paidAt          DateTime?
+  
+  // Gateway
+  pixReferenceId      String?   // ID da transação PIX
+  pixQrCode           String?   // QR Code PIX
+  mercadoPagoLink     String?   // Link de pagamento cartão
+  
+  // WhatsApp
+  whatsappMessageId   String?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model ApiLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  chargeId    String?
+  endpoint    String
+  method      String
+  statusCode  Int?
+  request     Json?
+  response    Json?
+  error       String?
+  
+  createdAt   DateTime @default(now())
+}
+
+enum ScheduleType {
+  IMMEDIATE
+  SCHEDULED_ONCE
+  MONTHLY_RECURRING
+}
+
+enum ChargeStatus {
+  PENDING
+  SCHEDULED
+  SENT
+  PAID
+  FAILED
+  CANCELLED
+}
+
