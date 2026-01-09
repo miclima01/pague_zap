@@ -15,6 +15,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { type, data } = body
 
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+
     // O Mercado Pago envia diferentes tipos de notificações
     // Para pagamentos, o tipo geralmente é "payment"
     if (type === 'payment') {
@@ -27,22 +30,45 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Buscar a cobrança pelo external_reference
-      // Precisamos buscar o usuário primeiro para obter o token
-      // Vamos buscar todas as cobranças pendentes e verificar qual corresponde
-      // Na prática, você pode melhorar isso armazenando o preference_id na cobrança
+      // 1. Estratégia Otimizada (O(1)): Lookup direto se tivermos userId
+      if (userId) {
+        const user = await prisma.user.findUnique({
+          where: { id: userId }
+        })
 
-      // Primeiro, vamos buscar o pagamento no Mercado Pago
-      // Mas precisamos do access token do usuário...
-      // Vamos buscar por external_reference nas cobranças recentes
+        if (!user || !user.mercadoPagoToken) {
+          console.error(`Recebido webhook para userId ${userId} inválido ou sem token`)
+          return NextResponse.json({ message: "Usuário inválido ou sem token" })
+        }
 
-      // Por enquanto, vamos usar uma abordagem mais simples:
-      // Buscar o pagamento e usar o external_reference para encontrar a cobrança
-      
-      // Nota: Para produção, considere armazenar o preference_id na cobrança
-      // ou usar o external_reference de forma mais eficiente
+        const mercadoPago = new MercadoPagoService({
+          accessToken: user.mercadoPagoToken,
+        })
 
+        const paymentResult = await mercadoPago.getPayment(paymentId.toString())
+
+        if (paymentResult.success && paymentResult.payment) {
+          const payment = paymentResult.payment
+          const chargeId = payment.external_reference
+
+          if (chargeId) {
+            const charge = await prisma.charge.findUnique({
+              where: { id: chargeId }
+            })
+
+            if (charge) {
+              await processPaymentUpdate(charge, payment, user.id)
+              return NextResponse.json({ message: "Webhook processado com sucesso (Otimizado)" })
+            }
+          }
+        }
+
+      }
+
+      // 2. Estratégia Legacy (Fallback): Busca linear (O(N))
       // Buscar todas as cobranças com status SENT recentemente
+      console.log("Webhook sem userId ou falha na estratégia otimizada: Usando fallback legacy")
+
       const recentCharges = await prisma.charge.findMany({
         where: {
           status: { in: ['SENT', 'PENDING'] },
@@ -53,7 +79,7 @@ export async function POST(request: NextRequest) {
         include: {
           user: true,
         },
-        take: 100,
+        take: 50, // Reduzido de 100 para 50 para evitar timeout
       })
 
       // Procurar a cobrança correspondente verificando com a API do Mercado Pago
@@ -70,48 +96,13 @@ export async function POST(request: NextRequest) {
           paymentResult.success &&
           paymentResult.payment?.external_reference === charge.id
         ) {
-          const payment = paymentResult.payment
-          const status = payment.status
-
-          // Mapear status do Mercado Pago para status da cobrança
-          let chargeStatus = charge.status
-          if (status === 'approved') {
-            chargeStatus = 'PAID'
-          } else if (status === 'rejected' || status === 'cancelled') {
-            chargeStatus = 'FAILED'
-          } else if (status === 'refunded') {
-            chargeStatus = 'FAILED'
-          }
-          // pending, in_process mantém o status atual
-
-          // Atualizar cobrança
-          await prisma.charge.update({
-            where: { id: charge.id },
-            data: {
-              status: chargeStatus,
-              paidAt: status === 'approved' ? new Date() : charge.paidAt,
-            },
-          })
-
-          // Logar o webhook
-          await prisma.apiLog.create({
-            data: {
-              userId: charge.userId,
-              chargeId: charge.id,
-              endpoint: '/webhooks/mercado-pago',
-              method: 'POST',
-              statusCode: 200,
-              request: body,
-              response: paymentResult.payment,
-            },
-          })
-
-          return NextResponse.json({ message: "Webhook processado com sucesso" })
+          await processPaymentUpdate(charge, paymentResult.payment, charge.userId)
+          return NextResponse.json({ message: "Webhook processado com sucesso (Legacy)" })
         }
       }
 
       // Se não encontrou a cobrança, retornar 200 mesmo assim (webhook do MP)
-      return NextResponse.json({ message: "Webhook recebido" })
+      return NextResponse.json({ message: "Webhook recebido - Nenhuma cobrança correspondente encontrada" })
     }
 
     // Para outros tipos de notificação (merchant_order, etc)
@@ -134,5 +125,42 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   return NextResponse.json({ message: "Webhook endpoint ativo" })
+}
+
+async function processPaymentUpdate(charge: any, payment: any, userId: string) {
+  const status = payment.status
+
+  // Mapear status do Mercado Pago para status da cobrança
+  let chargeStatus = charge.status
+  if (status === 'approved') {
+    chargeStatus = 'PAID'
+  } else if (status === 'rejected' || status === 'cancelled') {
+    chargeStatus = 'FAILED'
+  } else if (status === 'refunded') {
+    chargeStatus = 'FAILED'
+  }
+  // pending, in_process mantém o status atual
+
+  // Atualizar cobrança
+  await prisma.charge.update({
+    where: { id: charge.id },
+    data: {
+      status: chargeStatus,
+      paidAt: status === 'approved' ? new Date() : charge.paidAt,
+    },
+  })
+
+  // Logar o webhook
+  await prisma.apiLog.create({
+    data: {
+      userId: userId,
+      chargeId: charge.id,
+      endpoint: '/webhooks/mercado-pago',
+      method: 'POST',
+      statusCode: 200,
+      request: JSON.stringify({ type: 'payment', id: payment.id }),
+      response: JSON.stringify(payment),
+    },
+  })
 }
 

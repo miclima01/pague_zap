@@ -11,7 +11,7 @@ import { subDays, format } from "date-fns"
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
-  
+
   if (!session?.user?.id) {
     return null
   }
@@ -21,29 +21,33 @@ export default async function DashboardPage() {
 
   // Buscar estatísticas do usuário
   const [
-    totalCharges, 
-    pendingCharges, 
-    paidCharges, 
+    totalCharges,
+    pendingCharges,
+    paidCharges,
     paidChargesData,
-    statusDistribution
+    statusDistribution,
+    prevPeriodCharges,
+    currPeriodCharges,
+    prevPeriodRevenue,
+    currPeriodRevenue
   ] = await Promise.all([
     prisma.charge.count({
       where: { userId: session.user.id },
     }),
     prisma.charge.count({
-      where: { 
+      where: {
         userId: session.user.id,
         status: { in: ['PENDING', 'SCHEDULED', 'SENT'] }
       },
     }),
     prisma.charge.count({
-      where: { 
+      where: {
         userId: session.user.id,
         status: 'PAID'
       },
     }),
     prisma.charge.findMany({
-      where: { 
+      where: {
         userId: session.user.id,
         status: 'PAID',
         paidAt: { gte: thirtyDaysAgo }
@@ -58,8 +62,64 @@ export default async function DashboardPage() {
       by: ['status'],
       where: { userId: session.user.id },
       _count: { status: true }
+    }),
+    // Dados do período anterior (30-60 dias atrás) para tendências
+    prisma.charge.count({
+      where: {
+        userId: session.user.id,
+        createdAt: {
+          gte: subDays(now, 60),
+          lt: thirtyDaysAgo
+        }
+      }
+    }),
+    prisma.charge.count({
+      where: {
+        userId: session.user.id,
+        createdAt: {
+          gte: thirtyDaysAgo
+        }
+      }
+    }),
+    prisma.charge.aggregate({
+      where: {
+        userId: session.user.id,
+        status: 'PAID',
+        paidAt: {
+          gte: subDays(now, 60),
+          lt: thirtyDaysAgo
+        }
+      },
+      _sum: { amount: true }
+    }),
+    prisma.charge.aggregate({
+      where: {
+        userId: session.user.id,
+        status: 'PAID',
+        paidAt: {
+          gte: thirtyDaysAgo
+        }
+      },
+      _sum: { amount: true }
     })
   ])
+
+  // Processar tendências
+  const prevChargesCount = prevPeriodCharges
+  const currChargesCount = currPeriodCharges
+
+  const prevRevenue = prevPeriodRevenue._sum.amount || 0
+  const currRevenue = currPeriodRevenue._sum.amount || 0
+
+  const calculateTrend = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0
+    return Math.round(((current - previous) / previous) * 100)
+  }
+
+  const trends = {
+    totalCharges: calculateTrend(currChargesCount, prevChargesCount),
+    revenue: calculateTrend(currRevenue, prevRevenue)
+  }
 
   // Calcular receita total (geral)
   // Nota: Para totalRevenue geral, idealmente faríamos um aggregate, 
@@ -68,7 +128,7 @@ export default async function DashboardPage() {
   // O código anterior somava 'paidChargesData' que era ALL PAID charges.
   // Vamos manter a consistência e buscar o total geral de revenue.
   const totalRevenueResult = await prisma.charge.aggregate({
-    where: { 
+    where: {
       userId: session.user.id,
       status: 'PAID'
     },
@@ -81,6 +141,7 @@ export default async function DashboardPage() {
     pendingCharges,
     paidCharges,
     totalRevenue,
+    trends,
   }
 
   // Processar dados do gráfico de receita (últimos 30 dias)
@@ -90,7 +151,7 @@ export default async function DashboardPage() {
     const date = subDays(now, i)
     const key = format(date, 'dd/MM')
     if (!revenueMap.has(key)) {
-        revenueMap.set(key, 0)
+      revenueMap.set(key, 0)
     }
   }
 
@@ -146,9 +207,9 @@ export default async function DashboardPage() {
           <Button>Nova Cobrança</Button>
         </Link>
       </div>
-      
+
       <StatsCards stats={stats} />
-      
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <RevenueChart data={revenueChartData} />
         <StatusChart data={statusChartData} />

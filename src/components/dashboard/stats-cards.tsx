@@ -8,6 +8,10 @@ interface StatsCardsProps {
     pendingCharges: number
     paidCharges: number
     totalRevenue: number
+    trends?: {
+      totalCharges: number
+      revenue: number
+    }
   }
 }
 
@@ -18,6 +22,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       value: stats.totalCharges,
       icon: Receipt,
       description: "Todas as cobranças",
+      trend: stats.trends?.totalCharges
     },
     {
       title: "Pendentes",
@@ -39,6 +44,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
       icon: DollarSign,
       description: "Valor total recebido",
       variant: "primary" as const,
+      trend: stats.trends?.revenue
     },
   ]
 
@@ -59,6 +65,11 @@ export function StatsCards({ stats }: StatsCardsProps) {
               <p className="text-xs text-muted-foreground">
                 {card.description}
               </p>
+              {card.trend !== undefined && (
+                <p className={`text-xs mt-1 ${card.trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {card.trend > 0 ? '+' : ''}{card.trend}% em relação ao mês anterior
+                </p>
+              )}
             </CardContent>
           </Card>
         )

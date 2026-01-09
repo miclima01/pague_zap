@@ -53,15 +53,15 @@ export class ChargeService {
 
       // Criar link Mercado Pago (se configurado)
       let mercadoPagoLink: string | undefined
-      
+
       if (user.mercadoPagoToken) {
         const mercadoPago = new MercadoPagoService({
           accessToken: user.mercadoPagoToken,
         })
 
         // Criar preferência de pagamento
-        const notificationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/webhooks/mercado-pago`
-        
+        const notificationUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/webhooks/mercado-pago?userId=${user.id}`
+
         const preferenceResult = await mercadoPago.createPreference({
           title: charge.productName || charge.description,
           description: charge.description,
@@ -153,13 +153,13 @@ export class ChargeService {
           const now = new Date()
           const currentMonth = now.getMonth()
           const currentYear = now.getFullYear()
-          
+
           // Calcular data para o próximo mês
           const targetDay = charge.scheduleDay
           // Pegar último dia do próximo mês
           const daysInNextMonth = new Date(currentYear, currentMonth + 2, 0).getDate()
           const actualDay = Math.min(targetDay, daysInNextMonth)
-          
+
           const nextDate = new Date(currentYear, currentMonth + 1, actualDay)
 
           // Calcular novo vencimento (se houver)
@@ -181,17 +181,17 @@ export class ChargeService {
               description: charge.description,
               productName: charge.productName,
               imageUrl: charge.imageUrl,
-              
+
               // Data de envio agendada
               nextSendDate: nextDate,
               dueDate: nextDueDate,
-              
+
               scheduleType: 'MONTHLY_RECURRING',
               scheduleDay: charge.scheduleDay,
               status: 'SCHEDULED',
             }
           })
-          
+
           // Logar criação da recorrência
           await prisma.apiLog.create({
             data: {
