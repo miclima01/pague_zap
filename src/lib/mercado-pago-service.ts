@@ -58,7 +58,7 @@ export class MercadoPagoService {
       notificationUrl,
     } = params
 
-    const payload = {
+    const payload: any = {
       items: [
         {
           title,

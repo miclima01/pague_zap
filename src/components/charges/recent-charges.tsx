@@ -5,7 +5,7 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth-options"
 import { prisma } from "@/lib/prisma"
-import { ChargeStatus } from "@prisma/client"
+import { ChargeStatus } from "@/lib/enums"
 
 function getStatusBadge(status: ChargeStatus) {
   const statusConfig = {
@@ -80,7 +80,7 @@ export async function RecentCharges() {
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
                     <h3 className="font-medium">{charge.customerName}</h3>
-                    {getStatusBadge(charge.status)}
+                    {getStatusBadge(charge.status as ChargeStatus)}
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     {charge.description}

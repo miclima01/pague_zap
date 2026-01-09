@@ -138,7 +138,7 @@ export function PaymentSettings() {
             <Label htmlFor="pixKeyType">Tipo de Chave PIX</Label>
             <Select
               value={pixData.pixKeyType}
-              onValueChange={(value) => setPixData({ ...pixData, pixKeyType: value })}
+              onValueChange={(value: string) => setPixData({ ...pixData, pixKeyType: value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o tipo" />

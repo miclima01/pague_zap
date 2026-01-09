@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
-import { ChargeStatus } from "@prisma/client"
+import { ChargeStatus } from "@/lib/enums"
 import Link from "next/link"
 
 interface Charge {
@@ -50,11 +50,7 @@ export function ChargeDetails({ chargeId }: { chargeId: string }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
 
-  useEffect(() => {
-    fetchCharge()
-  }, [chargeId])
-
-  const fetchCharge = async () => {
+  const fetchCharge = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await fetch(`/api/charges/${chargeId}`)
@@ -74,7 +70,11 @@ export function ChargeDetails({ chargeId }: { chargeId: string }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [chargeId])
+
+  useEffect(() => {
+    fetchCharge()
+  }, [fetchCharge])
 
   const handleCancel = async () => {
     if (!confirm("Tem certeza que deseja cancelar esta cobrança?")) {

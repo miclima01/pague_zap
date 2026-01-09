@@ -4,14 +4,7 @@ export enum ScheduleType {
   MONTHLY_RECURRING = 'MONTHLY_RECURRING',
 }
 
-export enum ChargeStatus {
-  PENDING = 'PENDING',
-  SCHEDULED = 'SCHEDULED',
-  SENT = 'SENT',
-  PAID = 'PAID',
-  FAILED = 'FAILED',
-  CANCELLED = 'CANCELLED',
-}
+import { ChargeStatus } from "@/lib/enums"
 
 export interface ChargeFormData {
   customerName: string

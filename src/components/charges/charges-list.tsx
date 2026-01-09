@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { formatCurrency, formatDate } from "@/lib/utils"
-import { ChargeStatus } from "@prisma/client"
+import { ChargeStatus } from "@/lib/enums"
 import Link from "next/link"
 
 interface Charge {
@@ -48,11 +48,7 @@ export function ChargesList() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [error, setError] = useState("")
 
-  useEffect(() => {
-    fetchCharges()
-  }, [statusFilter, search])
-
-  const fetchCharges = async () => {
+  const fetchCharges = useCallback(async () => {
     try {
       setIsLoading(true)
       const params = new URLSearchParams()
@@ -75,7 +71,11 @@ export function ChargesList() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [statusFilter, search])
+
+  useEffect(() => {
+    fetchCharges()
+  }, [fetchCharges])
 
   const handleCancel = async (chargeId: string) => {
     if (!confirm("Tem certeza que deseja cancelar esta cobrança?")) {

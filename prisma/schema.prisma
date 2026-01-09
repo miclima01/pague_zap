@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -62,12 +62,12 @@ model Charge {
   imageUrl        String?
   
   // Agendamento
-  scheduleType    ScheduleType
+  scheduleType    String
   scheduleDay     Int?          // Dia do mês (1-31) para cobranças recorrentes
   nextSendDate    DateTime?
   
   // Status
-  status          ChargeStatus  @default(PENDING)
+  status          String  @default("PENDING")
   sentAt          DateTime?
   paidAt          DateTime?
   
@@ -92,25 +92,10 @@ model ApiLog {
   endpoint    String
   method      String
   statusCode  Int?
-  request     Json?
-  response    Json?
+  request     String?
+  response    String?
   error       String?
   
   createdAt   DateTime @default(now())
-}
-
-enum ScheduleType {
-  IMMEDIATE
-  SCHEDULED_ONCE
-  MONTHLY_RECURRING
-}
-
-enum ChargeStatus {
-  PENDING
-  SCHEDULED
-  SENT
-  PAID
-  FAILED
-  CANCELLED
 }
 
