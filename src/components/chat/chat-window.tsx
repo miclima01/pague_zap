@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { getMessages, sendMessage } from "@/app/(dashboard)/chat/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,18 +26,18 @@ export function ChatWindow({ userId, contactId, contactName }: ChatWindowProps) 
     const [loading, setLoading] = useState(false)
     const messagesEndRef = useRef<HTMLDivElement>(null)
 
-    const fetchMessages = async () => {
+    const fetchMessages = useCallback(async () => {
         const result = await getMessages(contactId)
         if (result.success && result.messages) {
             setMessages(result.messages as any)
         }
-    }
+    }, [contactId])
 
     useEffect(() => {
         fetchMessages()
         const interval = setInterval(fetchMessages, 5000) // Poll every 5s
         return () => clearInterval(interval)
-    }, [contactId])
+    }, [fetchMessages])
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
