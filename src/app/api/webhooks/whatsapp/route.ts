@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
                         })
 
                         if (user) {
-// Validar Assinatura
+                            // Validar Assinatura
                             let isSignatureValid = false
                             const signature = request.headers.get('x-hub-signature-256')
 
@@ -110,12 +110,26 @@ export async function POST(request: NextRequest) {
                                     isSignatureValid = true
                                 } else {
                                     console.warn(`Webhook: Assinatura inválida também com Global ENV. Esperado: ${expectedSignatureEnv}`)
+                                    // Save the debug info for the last failed attempt (Global ENV)
+                                    if (logId) await prisma.webhookLog.update({
+                                        where: { id: logId },
+                                        data: {
+                                            // Keep this warning "soft" until the final check fails
+                                            error: `Sig Mismatch (Global). Rec: ${signature.substring(0, 15)}... Exp: ${expectedSignatureEnv.substring(0, 15)}...`
+                                        }
+                                    })
                                 }
                             }
 
                             if (!isSignatureValid) {
                                 console.error(`Webhook: Falha de autenticação. Nenhuma assinatura bateu.`)
-                                if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'INVALID_SIGNATURE', error: 'Assinatura inválida (tanto User quanto Global)' } })
+                                if (logId) await prisma.webhookLog.update({
+                                    where: { id: logId },
+                                    data: {
+                                        status: 'INVALID_SIGNATURE',
+                                        error: `Assinatura inválida. Recebido: ${signature}. GlobalEnv: ${process.env.WHATSAPP_APP_SECRET ? 'DEFINED' : 'UNDEFINED'}`
+                                    }
+                                })
                                 return new NextResponse('Unauthorized: Invalid Signature', { status: 401 })
                             }
 
