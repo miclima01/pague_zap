@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { CheckCircle2, AlertCircle } from 'lucide-react'
+import { toast } from "sonner"
 
 export function PaymentSettings() {
   const { data: session } = useSession()
@@ -57,9 +58,9 @@ export function PaymentSettings() {
       })
 
       if (!response.ok) throw new Error('Erro ao salvar PIX')
-      alert('Configurações PIX salvas com sucesso!')
+      toast.success('Configurações PIX salvas com sucesso!')
     } catch (error) {
-      alert('Erro ao salvar configurações PIX')
+      toast.error('Erro ao salvar configurações PIX')
     } finally {
       setIsLoading(false)
     }
@@ -105,9 +106,9 @@ export function PaymentSettings() {
       })
 
       if (!response.ok) throw new Error('Erro ao salvar Mercado Pago')
-      alert('Configurações Mercado Pago salvas com sucesso!')
+      toast.success('Configurações Mercado Pago salvas com sucesso!')
     } catch (error) {
-      alert('Erro ao salvar configurações Mercado Pago')
+      toast.error('Erro ao salvar configurações Mercado Pago')
     } finally {
       setIsLoading(false)
     }
