@@ -4,21 +4,5 @@
       "path": "/api/cron/process-charges",
       "schedule": "0 8 * * *"
     }
-  ],
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    },
-    {
-      "src": "backend/main.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/templates/whatsapp",
-      "destination": "/backend/main.py"
-    }
   ]
 }

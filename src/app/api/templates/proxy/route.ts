@@ -1,8 +1,8 @@
-
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth-options"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
+import { WhatsAppTemplateService } from "@/lib/whatsapp/template-service"
 
 export async function POST(req: Request) {
     try {
@@ -17,100 +17,129 @@ export async function POST(req: Request) {
             where: { email: session.user.email },
             select: {
                 whatsappToken: true,
-                whatsappBusinessId: true, // This is the WABA ID usually, or App ID? 
-                // Schema says: whatsappBusinessId string?
-                // Schema also says: whatsappAppSecret string?
-
-                // IMPORTANT: The backend needs APP_ID and TOKEN.
-                // Usually App ID is constant for the platform (PagueZap), but Token is per user?
-                // OR does each user bring their own App? 
-                // Prompt says "SaaS... token por workspace/tenant". 
-                // Let's assume PagueZap has ONE App ID, and users have System User Tokens? 
-                // OR Users have their own Apps?
-
-                // "Se cada cliente conecta o próprio WABA: você provavelmente vai precisar de token por workspace"
-                // "Sugestão prática: mantenha META_GRAPH_VERSION e META_APP_ID globais, mas token por tenant."
-
-                // So I should inject the Token from DB. App ID might be global env var of the Next.js app.
+                whatsappBusinessId: true,
+                // We use global App ID (env) + User Token (DB)
             }
         })
 
         if (!user || !user.whatsappToken) {
-            return new NextResponse("WhatsApp not configured for this user", { status: 400 })
+            return new NextResponse("WhatsApp not configured for this user. Missing Token.", { status: 400 })
         }
+
+        // Initialize Service
+        // Use Global App ID (env) + User Token (DB)
+        const globalAppId = process.env.META_APP_ID
+        if (!globalAppId) {
+            return new NextResponse("Server misconfiguration: META_APP_ID missing", { status: 500 })
+        }
+
+        const service = new WhatsAppTemplateService(globalAppId, user.whatsappToken);
 
         const formData = await req.formData()
 
-        // 2. Prepare Request to Python Backend
-        // We forward the form data. 
-        // We inject the token into a Header.
+        // Extract Fields
+        const wabaId = formData.get("waba_id") as string;
+        const name = formData.get("name") as string;
+        const language = formData.get("language") as string;
+        const category = (formData.get("category") as string) || "UTILITY";
+        const bodyTextRaw = formData.get("body_text") as string;
+        const bodyExamplesRaw = formData.get("body_examples") as string;
+        const useOrderDetails = formData.get("use_order_details") === "true";
+        const headerImageUrl = formData.get("header_image_url") as string | null;
+        const headerImageFile = formData.get("header_image_file") as File | null;
 
-        // Determine backend URL
-        let backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-        if (!backendUrl) {
-            if (process.env.VERCEL_URL) {
-                backendUrl = `https://${process.env.VERCEL_URL}`;
-            } else {
-                backendUrl = "http://localhost:8000";
-            }
-        }
-        const pythonEndpoint = `${backendUrl}/api/templates/whatsapp`
-
-        const headers = new Headers()
-        headers.set("X-Meta-Token", user.whatsappToken)
-
-        // If user has specific App ID (unlikely for BSP but possible), we could use user.whatsappAppId if it existed.
-        // For now, let's assume global App ID or it won't be set and Backend will error if not in its own env.
-
-        // Forward Cookies and other headers to bypass Vercel Auth in Proxy requests
-        const incomingHeaders = new Headers(req.headers);
-
-        console.log("Proxy Incoming Headers Keys:", Array.from(incomingHeaders.keys()));
-
-        // We carefully select what to forward. 'cookie' is crucial for Vercel Auth.
-        if (incomingHeaders.get("cookie")) {
-            console.log("Forwarding Cookie header (length):", incomingHeaders.get("cookie")?.length);
-            headers.set("cookie", incomingHeaders.get("cookie")!);
+        // Validation
+        if (!wabaId || !name || !language || !bodyTextRaw || !bodyExamplesRaw) {
+            return new NextResponse("Missing required fields", { status: 400 })
         }
 
-        // Forward Vercel Protection Bypass header if present
-        if (incomingHeaders.get("x-vercel-protection-bypass")) {
-            console.log("Forwarding x-vercel-protection-bypass header");
-            headers.set("x-vercel-protection-bypass", incomingHeaders.get("x-vercel-protection-bypass")!);
-        }
-
-        // Also forward user-agent for good measure
-        if (incomingHeaders.get("user-agent")) {
-            headers.set("user-agent", incomingHeaders.get("user-agent")!);
-        }
-
-        console.log("Proxy Fetching URL:", pythonEndpoint);
-        const validResponse = await fetch(pythonEndpoint, {
-            method: "POST",
-            body: formData,
-            headers: headers,
-        })
-
-        const textBody = await validResponse.text();
-        console.log("Python Backend Response Status:", validResponse.status);
-        console.log("Python Backend Response Body:", textBody);
-
-        let data;
+        let examplesList;
         try {
-            data = JSON.parse(textBody);
+            examplesList = JSON.parse(bodyExamplesRaw);
         } catch (e) {
-            console.error("Failed to parse JSON from backend:", textBody);
-            return NextResponse.json(
-                { status: "error", meta_error: { message: `Backend returned non-JSON: ${textBody.substring(0, 200)}`, type: "ProxyError" } },
-                { status: validResponse.status || 500 }
-            );
+            return new NextResponse("Invalid JSON for body_examples", { status: 400 })
         }
 
-        return NextResponse.json(data, { status: validResponse.status })
+        // 1. Handle Image Source
+        let fileBuffer: Buffer;
+        let fileLength: number;
+        let mimeType: string = "image/jpeg";
+        let fileName: string = "header_image.jpg";
+
+        if (headerImageFile && headerImageFile.size > 0) {
+            const arrayBuffer = await headerImageFile.arrayBuffer();
+            fileBuffer = Buffer.from(arrayBuffer);
+            fileLength = fileBuffer.length;
+            mimeType = headerImageFile.type || "image/jpeg";
+            fileName = headerImageFile.name || fileName;
+
+            if (fileLength > 5 * 1024 * 1024) {
+                return new NextResponse("Image exceeds 5MB limit.", { status: 400 })
+            }
+        } else if (headerImageUrl) {
+            const result = await service.downloadImage(headerImageUrl);
+            fileBuffer = result.buffer;
+            mimeType = result.contentType;
+            fileLength = result.contentLength;
+        } else {
+            return new NextResponse("Must provide either header_image_file or header_image_url", { status: 400 })
+        }
+
+        // 2. Start Resumable Upload Flow
+        // Step 1: Create Session
+        const uploadId = await service.createUploadSession(fileLength, mimeType, fileName);
+
+        // Step 2: Upload File
+        const headerHandle = await service.uploadFileGetHandle(uploadId, fileBuffer);
+
+        // 3. Construct Template Payload
+        // Enforce UTILITY if Order Details
+        const finalCategory = useOrderDetails ? "UTILITY" : category;
+
+        const components: any[] = [];
+
+        // HEADER
+        components.push({
+            "type": "HEADER",
+            "format": "IMAGE",
+            "example": { "header_handle": [headerHandle] }
+        });
+
+        // BODY
+        components.push({
+            "type": "BODY",
+            "text": bodyTextRaw,
+            "example": { "body_text": examplesList }
+        });
+
+        // BUTTONS
+        if (useOrderDetails) {
+            components.push({
+                "type": "BUTTONS",
+                "buttons": [
+                    {
+                        "type": "ORDER_DETAILS",
+                        "text": "Review and Pay"
+                    }
+                ]
+            });
+        }
+
+        const payload = {
+            name: name,
+            language: language,
+            category: finalCategory,
+            components: components
+        };
+
+        // 4. Create Template
+        const result = await service.createMessageTemplate(wabaId, payload);
+
+        // Return result directly
+        return NextResponse.json(result);
 
     } catch (error: any) {
-        console.error("Proxy Error:", error)
+        console.error("Handler Error:", error)
         return new NextResponse(error.message || "Internal Server Error", { status: 500 })
     }
 }
