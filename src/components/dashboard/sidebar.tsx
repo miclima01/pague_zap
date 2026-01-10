@@ -17,6 +17,7 @@ const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Cobranças", href: "/charges", icon: Receipt },
   { name: "Chat", href: "/chat", icon: MessageSquare },
+  { name: "Templates", href: "/whatsapp-templates/new", icon: FileText },
   { name: "Configurações", href: "/settings", icon: Settings },
 ]
 
