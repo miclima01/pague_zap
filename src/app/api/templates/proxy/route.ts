@@ -1,0 +1,77 @@
+
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/app/api/auth/[...nextauth]/auth-options"
+import { prisma } from "@/lib/prisma"
+import { NextResponse } from "next/server"
+
+export async function POST(req: Request) {
+    try {
+        const session = await getServerSession(authOptions)
+
+        if (!session || !session.user || !session.user.email) {
+            return new NextResponse("Unauthorized", { status: 401 })
+        }
+
+        // 1. Get User Credentials from DB
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            select: {
+                whatsappToken: true,
+                whatsappBusinessId: true, // This is the WABA ID usually, or App ID? 
+                // Schema says: whatsappBusinessId string?
+                // Schema also says: whatsappAppSecret string?
+
+                // IMPORTANT: The backend needs APP_ID and TOKEN.
+                // Usually App ID is constant for the platform (PagueZap), but Token is per user?
+                // OR does each user bring their own App? 
+                // Prompt says "SaaS... token por workspace/tenant". 
+                // Let's assume PagueZap has ONE App ID, and users have System User Tokens? 
+                // OR Users have their own Apps?
+
+                // "Se cada cliente conecta o próprio WABA: você provavelmente vai precisar de token por workspace"
+                // "Sugestão prática: mantenha META_GRAPH_VERSION e META_APP_ID globais, mas token por tenant."
+
+                // So I should inject the Token from DB. App ID might be global env var of the Next.js app.
+            }
+        })
+
+        if (!user || !user.whatsappToken) {
+            return new NextResponse("WhatsApp not configured for this user", { status: 400 })
+        }
+
+        const formData = await req.formData()
+
+        // 2. Prepare Request to Python Backend
+        // We forward the form data. 
+        // We inject the token into a Header.
+
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
+        const pythonEndpoint = `${backendUrl}/api/templates/whatsapp`
+
+        const headers = new Headers()
+        headers.set("X-Meta-Token", user.whatsappToken)
+
+        // If App ID is global for the platform:
+        const globalAppId = process.env.META_APP_ID
+        if (globalAppId) {
+            headers.set("X-Meta-App-Id", globalAppId)
+        }
+        // If user has specific App ID (unlikely for BSP but possible), we could use user.whatsappAppId if it existed.
+        // For now, let's assume global App ID or it won't be set and Backend will error if not in its own env.
+
+        const response = await fetch(pythonEndpoint, {
+            method: "POST",
+            body: formData,
+            headers: headers,
+            // Note: fetch automatically sets Content-Type to multipart/form-data with boundary when body is FormData
+        })
+
+        const data = await response.json()
+
+        return NextResponse.json(data, { status: response.status })
+
+    } catch (error: any) {
+        console.error("Proxy Error:", error)
+        return new NextResponse(error.message || "Internal Server Error", { status: 500 })
+    }
+}

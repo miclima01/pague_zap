@@ -12,14 +12,27 @@ META_APP_ID = os.getenv("META_APP_ID")
 META_TOKEN = os.getenv("META_TOKEN")
 
 # Dependency for service
-def get_service(token: str = None) -> WhatsAppTemplateService:
-    # Use global token if not provided (simulating SaaS environment from prompt)
-    final_token = token or META_TOKEN
-    if not META_APP_ID:
-        raise HTTPException(status_code=500, detail="Server misconfiguration: META_APP_ID missing")
+def get_service(
+    token: str = None,
+    x_meta_token: Optional[str] = Header(None, alias="X-Meta-Token"),
+    x_meta_app_id: Optional[str] = Header(None, alias="X-Meta-App-Id")
+) -> WhatsAppTemplateService:
+    # 1. Try Header (SaaS/Proxy mode)
+    final_token = x_meta_token
+    final_app_id = x_meta_app_id
+
+    # 2. Fallback to Env/Global (Dev mode or single tenant)
     if not final_token:
-        raise HTTPException(status_code=500, detail="Server misconfiguration: META_TOKEN missing")
-    return WhatsAppTemplateService(app_id=META_APP_ID, token=final_token)
+        final_token = token or META_TOKEN
+    if not final_app_id:
+        final_app_id = META_APP_ID
+
+    if not final_app_id:
+        raise HTTPException(status_code=500, detail="Server misconfiguration: META_APP_ID missing (Header or Env)")
+    if not final_token:
+        raise HTTPException(status_code=500, detail="Server misconfiguration: META_TOKEN missing (Header or Env)")
+        
+    return WhatsAppTemplateService(app_id=final_app_id, token=final_token)
 
 # Schemas
 class TemplateExample(BaseModel):

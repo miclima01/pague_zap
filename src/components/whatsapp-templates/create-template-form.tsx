@@ -59,8 +59,8 @@ export default function CreateTemplateForm({ wabaId }: { wabaId: string }) {
         }
 
         try {
-            const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || ""
-            const response = await fetch(`${baseUrl}/api/templates/whatsapp`, {
+            // Call our own Next.js Proxy (which handles auth & creds)
+            const response = await fetch("/api/templates/proxy", {
                 method: "POST",
                 body: formData,
             })
