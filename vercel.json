@@ -5,10 +5,20 @@
       "schedule": "0 8 * * *"
     }
   ],
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    },
+    {
+      "src": "backend/main.py",
+      "use": "@vercel/python"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/templates/whatsapp",
-      "destination": "/api/index"
+      "destination": "/backend/main.py"
     }
   ]
 }
