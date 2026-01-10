@@ -192,7 +192,7 @@ export function WhatsAppSettings() {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              Coloque esta URL no campo "URL de callback" na Meta.
+              Coloque esta URL no campo &quot;URL de callback&quot; na Meta.
             </p>
           </div>
 
@@ -214,7 +214,7 @@ export function WhatsAppSettings() {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              Coloque este token no campo "Verificar token" na Meta.
+              Coloque este token no campo &quot;Verificar token&quot; na Meta.
             </p>
           </div>
         </div>
