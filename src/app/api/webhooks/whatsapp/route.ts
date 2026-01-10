@@ -45,13 +45,16 @@ export async function POST(request: NextRequest) {
         const body = JSON.parse(rawBody)
 
         // 1. Resiliência: Salvar Log Bruto
+        let logId: string | undefined
+
         try {
-            await prisma.webhookLog.create({
+            const log = await prisma.webhookLog.create({
                 data: {
                     payload: body,
                     status: 'RECEIVED'
                 }
             })
+            logId = log.id
         } catch (logError) {
             console.error('Erro ao salvar log do webhook:', logError)
         }
@@ -77,6 +80,7 @@ export async function POST(request: NextRequest) {
 
                                 if (!signature) {
                                     console.warn(`Webhook: Assinatura ausente para usuário ${user.id}`)
+                                    if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'MISSING_SIGNATURE', error: 'Assinatura ausente no header' } })
                                     return new NextResponse('Unauthorized: Missing Signature', { status: 401 })
                                 }
 
@@ -87,8 +91,7 @@ export async function POST(request: NextRequest) {
 
                                 if (signature !== expectedSignature) {
                                     console.warn(`Webhook: Assinatura inválida para usuário ${user.id}`)
-                                    // Retornar 401 rejeita a requisição, a Meta tentará reenviar.
-                                    // Se a chave estiver errada, vai continuar falhando.
+                                    if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'INVALID_SIGNATURE', error: 'Assinatura não bate com o segredo configurado' } })
                                     return new NextResponse('Unauthorized: Invalid Signature', { status: 401 })
                                 }
                             } else if (process.env.WHATSAPP_APP_SECRET) {
@@ -101,16 +104,22 @@ export async function POST(request: NextRequest) {
 
                                 if (signature && signature !== expectedSignature) {
                                     console.warn('Webhook: Assinatura inválida (Global ENV)')
+                                    if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'INVALID_SIGNATURE_ENV', error: 'Assinatura (Global) inválida' } })
                                     return new NextResponse('Unauthorized', { status: 401 })
                                 }
                             }
 
                             // Processar Mensagens
+                            let successCount = 0
                             for (const message of change.value.messages) {
                                 await processMessage(user.id, message, change.value.contacts)
+                                successCount++
                             }
+
+                            if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'PROCESSED', error: `Processadas: ${successCount} msgs` } })
                         } else {
                             console.warn(`Webhook: Tenant não encontrado para Phone ID ${phoneNumberId}`)
+                            if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'TENANT_NOT_FOUND', error: `Nenhum usuário com Phone ID: ${phoneNumberId}` } })
                         }
                     }
                 }
