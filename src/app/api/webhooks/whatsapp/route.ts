@@ -95,6 +95,15 @@ export async function POST(request: NextRequest) {
                                     isSignatureValid = true
                                 } else {
                                     console.warn(`Webhook: Assinatura inválida com Secret do Usuário ${user.id}. Esperado: ${expectedSignature}, Recebido: ${signature}`)
+                                    // Save the debug info for the User Secret failure
+                                    if (logId) await prisma.webhookLog.update({
+                                        where: { id: logId },
+                                        data: {
+                                            // Soft update - will be overwritten if refined or final error occurs, 
+                                            // but ensures we have a record if we stop here or if global also fails.
+                                            error: `Sig Mismatch (User). Rec: ${signature.substring(0, 15)}... Exp: ${expectedSignature.substring(0, 15)}...`
+                                        }
+                                    })
                                 }
                             }
 
