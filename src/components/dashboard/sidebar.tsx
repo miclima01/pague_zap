@@ -20,13 +20,21 @@ const navigation = [
   { name: "Configurações", href: "/settings", icon: Settings },
 ]
 
-export function Sidebar() {
+interface SidebarContentProps {
+  onNavigate?: () => void
+}
+
+export function SidebarContent({ onNavigate }: SidebarContentProps) {
   const pathname = usePathname()
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-card">
+    <div className="flex h-full flex-col bg-card">
       <div className="flex h-16 items-center border-b px-6">
-        <Link href="/dashboard" className="flex items-center space-x-2">
+        <Link
+          href="/dashboard"
+          className="flex items-center space-x-2"
+          onClick={onNavigate}
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Receipt className="h-5 w-5" />
           </div>
@@ -41,6 +49,7 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
@@ -64,6 +73,14 @@ export function Sidebar() {
           <span>Sair</span>
         </button>
       </div>
+    </div>
+  )
+}
+
+export function Sidebar() {
+  return (
+    <div className="hidden h-screen w-64 border-r md:block">
+      <SidebarContent />
     </div>
   )
 }
