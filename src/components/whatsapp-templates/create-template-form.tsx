@@ -1,0 +1,174 @@
+"use client"
+
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Loader2 } from "lucide-react"
+
+export default function CreateTemplateForm({ wabaId }: { wabaId: string }) {
+    const [isLoading, setIsLoading] = useState(false)
+    const [result, setResult] = useState<any>(null)
+    const [error, setError] = useState<string | null>(null)
+
+    const { register, handleSubmit, watch, setValue } = useForm({
+        defaultValues: {
+            name: "",
+            language: "pt_BR",
+            body_text: "Olá {{1}}! Seu pedido de *{{2}}* foi gerado com sucesso.\n\nCopie o código pix abaixo e pague no app do seu banco.",
+            body_examples: '[[\"Michael\", \"Produto Teste\"]]',
+            use_order_details: false,
+            header_image_url: ""
+        }
+    })
+
+    // Watch for order details toggle to force defaults
+    const useOrderDetails = watch("use_order_details")
+
+    const onSubmit = async (data: any) => {
+        setIsLoading(true)
+        setError(null)
+        setResult(null)
+
+        const formData = new FormData()
+        formData.append("waba_id", wabaId)
+        formData.append("name", data.name)
+        formData.append("language", data.language)
+        formData.append("body_text", data.body_text)
+        formData.append("body_examples", data.body_examples)
+        formData.append("use_order_details", data.use_order_details.toString())
+
+        // Category is UTILITY if order details, else UTILITY default for now
+        formData.append("category", "UTILITY")
+
+        // Handle header image
+        const fileInput = (document.getElementById("header_image_file") as HTMLInputElement)?.files?.[0]
+        if (fileInput) {
+            formData.append("header_image_file", fileInput)
+        } else if (data.header_image_url) {
+            formData.append("header_image_url", data.header_image_url)
+        } else {
+            setError("Please provide a header image (File or URL)")
+            setIsLoading(false)
+            return
+        }
+
+        try {
+            const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || ""
+            const response = await fetch(`${baseUrl}/api/templates/whatsapp`, {
+                method: "POST",
+                body: formData,
+            })
+
+            const json = await response.json()
+
+            if (!response.ok) {
+                throw new Error(json.detail || "Failed to create template")
+            }
+
+            if (json.status === "error") {
+                setResult(json)
+                setError("Meta API returned an error")
+            } else {
+                setResult(json)
+            }
+        } catch (err: any) {
+            console.error(err)
+            setError(err.message)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    return (
+        <Card className="w-full max-w-2xl mx-auto">
+            <CardHeader>
+                <CardTitle>Create WhatsApp Template</CardTitle>
+                <CardDescription>New template with Image Header & Order Details</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+
+                    <div className="space-y-2">
+                        <Label htmlFor="name">Template Name</Label>
+                        <Input id="name" {...register("name")} placeholder="order_update_v1" />
+                        <p className="text-xs text-muted-foreground">Lowercase, numbers, underscores only.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="language">Language</Label>
+                        <Input id="language" {...register("language")} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Header Image</Label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="header_image_file" className="text-xs">Upload File</Label>
+                                <Input id="header_image_file" type="file" accept="image/png, image/jpeg" />
+                            </div>
+                            <div>
+                                <Label htmlFor="header_image_url" className="text-xs">Or Image URL</Label>
+                                <Input id="header_image_url" {...register("header_image_url")} placeholder="https://..." />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="body_text">Body Text</Label>
+                        <Textarea id="body_text" {...register("body_text")} rows={4} />
+                        <p className="text-xs text-muted-foreground">Use {"{{1}}"}, {"{{2}}"} for variables.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="body_examples">Body Examples (JSON)</Label>
+                        <Input id="body_examples" {...register("body_examples")} />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                        <Switch
+                            id="use_order_details"
+                            checked={useOrderDetails}
+                            onCheckedChange={(checked) => setValue("use_order_details", checked)}
+                        />
+                        <Label htmlFor="use_order_details">Add "Review and Pay" Button (Order Details)</Label>
+                    </div>
+
+                    {error && (
+                        <Alert variant="destructive">
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
+
+                    {result && result.status === "success" && (
+                        <Alert className="bg-green-50 text-green-900 border-green-200">
+                            <AlertTitle>Success!</AlertTitle>
+                            <AlertDescription>
+                                Template ID: {result.data?.id}
+                                <div className="text-xs mt-2 text-gray-500">Trace ID: {result.meta_trace_id}</div>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
+                    {result && result.status === "error" && (
+                        <div className="p-4 bg-red-50 text-red-900 rounded-md text-sm overflow-auto max-h-40">
+                            <pre>{JSON.stringify(result.meta_error, null, 2)}</pre>
+                        </div>
+                    )}
+
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create Template
+                    </Button>
+
+                </form>
+            </CardContent>
+        </Card>
+    )
+}

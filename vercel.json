@@ -4,5 +4,17 @@
       "path": "/api/cron/process-charges",
       "schedule": "0 8 * * *"
     }
+  ],
+  "builds": [
+    {
+      "src": "backend/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/templates/(.*)",
+      "destination": "/backend/main.py"
+    }
   ]
 }
