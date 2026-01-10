@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
         whatsappPhoneNumberId: true,
         whatsappToken: true,
         whatsappBusinessId: true,
+        whatsappAppSecret: true,
+        whatsappVerifyToken: true,
         templateName: true,
         templateLanguage: true,
         defaultImageUrl: true,
