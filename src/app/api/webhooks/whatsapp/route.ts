@@ -74,39 +74,49 @@ export async function POST(request: NextRequest) {
                         })
 
                         if (user) {
-                            // Validar Assinatura se o usuário tiver App Secret configurado
+// Validar Assinatura
+                            let isSignatureValid = false
+                            const signature = request.headers.get('x-hub-signature-256')
+
+                            if (!signature) {
+                                console.warn(`Webhook: Assinatura ausente para usuário ${user.id}`)
+                                if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'MISSING_SIGNATURE', error: 'Assinatura ausente no header' } })
+                                return new NextResponse('Unauthorized: Missing Signature', { status: 401 })
+                            }
+
+                            // 1. Tentar validar com Secret do Usuário
                             if (user.whatsappAppSecret) {
-                                const signature = request.headers.get('x-hub-signature-256')
-
-                                if (!signature) {
-                                    console.warn(`Webhook: Assinatura ausente para usuário ${user.id}`)
-                                    if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'MISSING_SIGNATURE', error: 'Assinatura ausente no header' } })
-                                    return new NextResponse('Unauthorized: Missing Signature', { status: 401 })
-                                }
-
                                 const expectedSignature = 'sha256=' + crypto
                                     .createHmac('sha256', user.whatsappAppSecret)
                                     .update(rawBody)
                                     .digest('hex')
 
-                                if (signature !== expectedSignature) {
-                                    console.warn(`Webhook: Assinatura inválida para usuário ${user.id}`)
-                                    if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'INVALID_SIGNATURE', error: 'Assinatura não bate com o segredo configurado' } })
-                                    return new NextResponse('Unauthorized: Invalid Signature', { status: 401 })
+                                if (signature === expectedSignature) {
+                                    isSignatureValid = true
+                                } else {
+                                    console.warn(`Webhook: Assinatura inválida com Secret do Usuário ${user.id}. Esperado: ${expectedSignature}, Recebido: ${signature}`)
                                 }
-                            } else if (process.env.WHATSAPP_APP_SECRET) {
-                                // Fallback para ENV global
-                                const signature = request.headers.get('x-hub-signature-256')
-                                const expectedSignature = 'sha256=' + crypto
+                            }
+
+                            // 2. Fallback: Tentar validar com Secret Global (ENV)
+                            if (!isSignatureValid && process.env.WHATSAPP_APP_SECRET) {
+                                const expectedSignatureEnv = 'sha256=' + crypto
                                     .createHmac('sha256', process.env.WHATSAPP_APP_SECRET)
                                     .update(rawBody)
                                     .digest('hex')
 
-                                if (signature && signature !== expectedSignature) {
-                                    console.warn('Webhook: Assinatura inválida (Global ENV)')
-                                    if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'INVALID_SIGNATURE_ENV', error: 'Assinatura (Global) inválida' } })
-                                    return new NextResponse('Unauthorized', { status: 401 })
+                                if (signature === expectedSignatureEnv) {
+                                    console.log(`Webhook: Assinatura validada via Fallback (Global ENV) para usuário ${user.id}`)
+                                    isSignatureValid = true
+                                } else {
+                                    console.warn(`Webhook: Assinatura inválida também com Global ENV. Esperado: ${expectedSignatureEnv}`)
                                 }
+                            }
+
+                            if (!isSignatureValid) {
+                                console.error(`Webhook: Falha de autenticação. Nenhuma assinatura bateu.`)
+                                if (logId) await prisma.webhookLog.update({ where: { id: logId }, data: { status: 'INVALID_SIGNATURE', error: 'Assinatura inválida (tanto User quanto Global)' } })
+                                return new NextResponse('Unauthorized: Invalid Signature', { status: 401 })
                             }
 
                             // Processar Mensagens
