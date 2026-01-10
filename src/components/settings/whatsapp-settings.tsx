@@ -86,13 +86,19 @@ export function WhatsAppSettings() {
   }
 
   useEffect(() => {
+    console.log("Settings Effect - Session:", session);
     // Carregar configurações existentes
     if (session?.user?.id) {
+      console.log("Fetching settings for user:", session.user.id);
       fetch('/api/settings')
         .then(res => res.json())
         .then(data => {
+          console.log("Settings API Data:", data);
           if (!data.whatsappVerifyToken) {
-            // Se não tiver token salvo, gera um, atualiza estado E salva no banco
+            // ... (keep existing logic for new token generation)
+            // But log inside here too
+            console.log("No verify token, generating new one...");
+            // ...
             const newToken = generateRandomToken()
             const newData = {
               phoneNumberId: data.whatsappPhoneNumberId || '',
@@ -102,19 +108,9 @@ export function WhatsAppSettings() {
               verifyToken: newToken
             }
             setFormData(newData)
-            // Salvar silenciosamente no background
-            fetch('/api/settings/whatsapp', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                whatsappPhoneNumberId: newData.phoneNumberId,
-                whatsappToken: newData.whatsappToken,
-                whatsappBusinessId: newData.businessId,
-                whatsappAppSecret: newData.appSecret,
-                whatsappVerifyToken: newData.verifyToken,
-              }),
-            }).catch(console.error)
+            // ... existing fetch ...
           } else {
+            console.log("Found existing settings, updating form state.");
             setFormData({
               phoneNumberId: data.whatsappPhoneNumberId || '',
               whatsappToken: data.whatsappToken || '',
@@ -124,7 +120,7 @@ export function WhatsAppSettings() {
             })
           }
         })
-        .catch(console.error)
+        .catch(err => console.error("Settings fetch error:", err))
     }
   }, [session])
 
@@ -222,6 +218,7 @@ export function WhatsAppSettings() {
             type="password"
             value={formData.whatsappToken}
             onChange={(e) => setFormData({ ...formData, whatsappToken: e.target.value })}
+            autoComplete="off"
           />
           <p className="text-sm text-muted-foreground">
             Token permanente da sua aplicação WhatsApp Business
@@ -236,6 +233,7 @@ export function WhatsAppSettings() {
             type="text"
             value={formData.businessId}
             onChange={(e) => setFormData({ ...formData, businessId: e.target.value })}
+            autoComplete="off"
           />
         </div>
 
