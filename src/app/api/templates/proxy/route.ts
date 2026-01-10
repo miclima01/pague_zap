@@ -65,15 +65,27 @@ export async function POST(req: Request) {
 
         // Forward Cookies and other headers to bypass Vercel Auth in Proxy requests
         const incomingHeaders = new Headers(req.headers);
+
+        console.log("Proxy Incoming Headers Keys:", Array.from(incomingHeaders.keys()));
+
         // We carefully select what to forward. 'cookie' is crucial for Vercel Auth.
         if (incomingHeaders.get("cookie")) {
+            console.log("Forwarding Cookie header (length):", incomingHeaders.get("cookie")?.length);
             headers.set("cookie", incomingHeaders.get("cookie")!);
         }
+
+        // Forward Vercel Protection Bypass header if present
+        if (incomingHeaders.get("x-vercel-protection-bypass")) {
+            console.log("Forwarding x-vercel-protection-bypass header");
+            headers.set("x-vercel-protection-bypass", incomingHeaders.get("x-vercel-protection-bypass")!);
+        }
+
         // Also forward user-agent for good measure
         if (incomingHeaders.get("user-agent")) {
             headers.set("user-agent", incomingHeaders.get("user-agent")!);
         }
 
+        console.log("Proxy Fetching URL:", pythonEndpoint);
         const validResponse = await fetch(pythonEndpoint, {
             method: "POST",
             body: formData,
