@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useState, useEffect } from 'react'
 import { CheckCircle2, AlertCircle, Copy, RefreshCw } from 'lucide-react'
+import { toast } from "sonner"
 import { useSession } from 'next-auth/react'
 
 function generateRandomToken() {
@@ -61,7 +62,7 @@ export function WhatsAppSettings() {
       return true
     } catch (error) {
       console.error(error)
-      alert('Erro ao salvar configurações')
+      toast.error('Erro ao salvar configurações')
       return false
     } finally {
       setIsLoading(false)
@@ -75,13 +76,13 @@ export function WhatsAppSettings() {
 
     // Auto-save
     const success = await saveSettings(newData)
-    if (success) alert('Novo token gerado e salvo com sucesso!')
+    if (success) toast.success('Novo token gerado e salvo com sucesso!')
   }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     // Could add toast here
-    alert('Copiado para a área de transferência!')
+    toast.success('Copiado para a área de transferência!')
   }
 
   useEffect(() => {
@@ -157,7 +158,7 @@ export function WhatsAppSettings() {
 
   const handleSave = async () => {
     const success = await saveSettings(formData)
-    if (success) alert('Configurações salvas com sucesso!')
+    if (success) toast.success('Configurações salvas com sucesso!')
   }
 
   const fetchLogs = async () => {

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { toast } from "sonner"
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 
@@ -40,10 +41,11 @@ export function TemplateSettings() {
         body: JSON.stringify(formData),
       })
 
+
       if (!response.ok) throw new Error('Erro ao salvar configurações')
-      alert('Configurações salvas com sucesso!')
+      toast.success('Configurações salvas com sucesso!')
     } catch (error) {
-      alert('Erro ao salvar configurações')
+      toast.error('Erro ao salvar configurações')
     } finally {
       setIsLoading(false)
     }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { toast } from "sonner"
 import { getMessages, sendMessage } from "@/app/(dashboard)/chat/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -64,7 +65,7 @@ export function ChatWindow({ userId, contactId, contactName }: ChatWindowProps) 
 
             if (!result.success) {
                 // Handle error (maybe mark message as failed)
-                alert("Failed to send: " + result.error)
+                toast.error("Failed to send: " + result.error)
             } else {
                 fetchMessages()
             }

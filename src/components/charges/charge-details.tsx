@@ -1,8 +1,10 @@
+
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils"
 import { ChargeStatus } from "@/lib/enums"
@@ -38,7 +40,7 @@ function getStatusBadge(status: ChargeStatus) {
   const config = statusConfig[status] || statusConfig.PENDING
 
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${config.className}`}>
+    <span className={`inline - flex items - center rounded - full px - 3 py - 1 text - sm font - medium ${config.className} `}>
       {config.label}
     </span>
   )
@@ -53,8 +55,8 @@ export function ChargeDetails({ chargeId }: { chargeId: string }) {
   const fetchCharge = useCallback(async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/charges/${chargeId}`)
-      
+      const response = await fetch(`/ api / charges / ${chargeId} `)
+
       if (!response.ok) {
         if (response.status === 404) {
           setError("Cobrança não encontrada")
@@ -82,18 +84,21 @@ export function ChargeDetails({ chargeId }: { chargeId: string }) {
     }
 
     try {
-      const response = await fetch(`/api/charges/${chargeId}`, {
+      const response = await fetch(`/ api / charges / ${chargeId} `, {
         method: "DELETE",
       })
 
       if (!response.ok) {
-        throw new Error("Erro ao cancelar cobrança")
+        toast.error("Erro ao cancelar cobrança")
+        return
       }
 
+      toast.success("Cobrança cancelada com sucesso")
       router.push("/charges")
       router.refresh()
     } catch (error) {
-      alert("Erro ao cancelar cobrança")
+      console.error(error)
+      toast.error("Erro ao cancelar cobrança")
     }
   }
 
@@ -107,14 +112,16 @@ export function ChargeDetails({ chargeId }: { chargeId: string }) {
 
       if (!response.ok) {
         const data = await response.json()
-        alert(data.error || "Erro ao enviar cobrança")
+        toast.error(data.error || "Erro ao enviar cobrança")
         return
       }
 
+      toast.success("Cobrança enviada com sucesso!")
       fetchCharge()
       router.refresh()
     } catch (error) {
-      alert("Erro ao enviar cobrança")
+      console.error(error)
+      toast.error("Erro ao enviar cobrança")
     }
   }
 

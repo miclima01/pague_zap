@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { ChargeStatus } from "@/lib/enums"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 import Link from "next/link"
 
 interface Charge {
@@ -88,13 +90,16 @@ export function ChargesList() {
       })
 
       if (!response.ok) {
-        throw new Error("Erro ao cancelar cobrança")
+        toast.error("Erro ao cancelar cobrança")
+        return
       }
 
+      toast.success("Cobrança cancelada com sucesso")
       fetchCharges()
       router.refresh()
     } catch (error) {
-      alert("Erro ao cancelar cobrança")
+      console.error(error)
+      toast.error("Erro ao cancelar cobrança")
     }
   }
 
@@ -108,14 +113,16 @@ export function ChargesList() {
 
       if (!response.ok) {
         const data = await response.json()
-        alert(data.error || "Erro ao enviar cobrança")
+        toast.error(data.error || "Erro ao enviar cobrança")
         return
       }
 
+      toast.success("Cobrança enviada com sucesso!")
       fetchCharges()
       router.refresh()
     } catch (error) {
-      alert("Erro ao enviar cobrança")
+      console.error(error)
+      toast.error("Erro ao enviar cobrança")
     }
   }
 
