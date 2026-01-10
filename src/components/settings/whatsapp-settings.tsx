@@ -31,6 +31,9 @@ export function WhatsAppSettings() {
     verifyToken: '',
   })
   const [webhookUrl, setWebhookUrl] = useState('')
+  const [logs, setLogs] = useState<any[]>([])
+  const [showLogs, setShowLogs] = useState(false)
+  const [loadingLogs, setLoadingLogs] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -155,6 +158,28 @@ export function WhatsAppSettings() {
   const handleSave = async () => {
     const success = await saveSettings(formData)
     if (success) alert('Configurações salvas com sucesso!')
+  }
+
+  const fetchLogs = async () => {
+    setLoadingLogs(true)
+    try {
+      const res = await fetch('/api/settings/logs')
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setLogs(data)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoadingLogs(false)
+    }
+  }
+
+  const toggleLogs = () => {
+    if (!showLogs) {
+      fetchLogs()
+    }
+    setShowLogs(!showLogs)
   }
 
   return (
@@ -297,6 +322,45 @@ export function WhatsAppSettings() {
           </Button>
         </div>
       </CardContent>
+
+      <div className="border-t p-6 bg-slate-50 rounded-b-lg">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold">Diagnóstico do Webhook</h3>
+            <p className="text-sm text-muted-foreground">Veja os dados recebidos da Meta em tempo real.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={toggleLogs}>
+            {showLogs ? 'Ocultar Logs' : 'Ver Logs Recentes'}
+          </Button>
+        </div>
+
+        {showLogs && (
+          <div className="space-y-2">
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={loadingLogs}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingLogs ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            </div>
+            <div className="bg-black text-green-400 p-4 rounded-md font-mono text-xs h-64 overflow-y-auto">
+              {logs.length === 0 ? (
+                <p className="text-gray-500 italic">Nenhum log encontrado (ou falha ao carregar).</p>
+              ) : (
+                logs.map((log) => (
+                  <div key={log.id} className="mb-4 border-b border-gray-800 pb-2">
+                    <div className="flex justify-between text-gray-400 mb-1">
+                      <span>{new Date(log.createdAt).toLocaleString()}</span>
+                      <span className={log.status === 'ERROR' ? 'text-red-500' : 'text-blue-400'}>{log.status}</span>
+                    </div>
+                    {log.error && <div className="text-red-500 mb-1">Error: {log.error}</div>}
+                    <pre className="whitespace-pre-wrap break-all">{JSON.stringify(log.payload, null, 2)}</pre>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </Card>
   )
 }
