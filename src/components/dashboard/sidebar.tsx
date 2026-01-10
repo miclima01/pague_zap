@@ -3,18 +3,20 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { 
-  LayoutDashboard, 
-  FileText, 
+import {
+  LayoutDashboard,
+  FileText,
   Settings,
   LogOut,
-  Receipt
+  Receipt,
+  MessageSquare
 } from "lucide-react"
 import { signOut } from "next-auth/react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Cobranças", href: "/charges", icon: Receipt },
+  { name: "Chat", href: "/chat", icon: MessageSquare },
   { name: "Configurações", href: "/settings", icon: Settings },
 ]
 
@@ -31,7 +33,7 @@ export function Sidebar() {
           <span className="text-lg font-bold">PagueZap</span>
         </Link>
       </div>
-      
+
       <nav className="flex-1 space-y-1 p-4">
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname?.startsWith(item.href + "/")

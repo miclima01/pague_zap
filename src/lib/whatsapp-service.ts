@@ -21,8 +21,8 @@ export interface PaymentMessageParams {
 
 export class WhatsAppService {
   private baseUrl = 'https://graph.facebook.com/v18.0'
-  
-  constructor(private config: WhatsAppConfig) {}
+
+  constructor(private config: WhatsAppConfig) { }
 
   async sendPaymentMessage(params: PaymentMessageParams) {
     const {
@@ -48,9 +48,9 @@ export class WhatsAppService {
       type: 'template',
       template: {
         name: 'paymentswa',
-        language: { 
-          policy: 'deterministic', 
-          code: 'pt_BR' 
+        language: {
+          policy: 'deterministic',
+          code: 'pt_BR'
         },
         components: [
           {
@@ -89,9 +89,9 @@ export class WhatsAppService {
                       mercadoPagoLink
                     ),
                     currency: 'BRL',
-                    total_amount: { 
-                      value: amountInCents, 
-                      offset: 100 
+                    total_amount: {
+                      value: amountInCents,
+                      offset: 100
                     },
                     order: {
                       status: 'pending',
@@ -99,16 +99,16 @@ export class WhatsAppService {
                         {
                           retailer_id: '1234567',
                           name: productName,
-                          amount: { 
-                            value: amountInCents, 
-                            offset: 100 
+                          amount: {
+                            value: amountInCents,
+                            offset: 100
                           },
                           quantity: 1
                         }
                       ],
-                      subtotal: { 
-                        value: amountInCents, 
-                        offset: 100 
+                      subtotal: {
+                        value: amountInCents,
+                        offset: 100
                       }
                     }
                   }
@@ -144,6 +144,45 @@ export class WhatsAppService {
       }
     }
   }
+
+  async sendTextMessage(to: string, text: string) {
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'text',
+      text: {
+        preview_url: false,
+        body: text
+      }
+    }
+
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/${this.config.phoneNumberId}/messages`,
+        payload,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.config.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      return {
+        success: true,
+        messageId: response.data.messages[0].id,
+        data: response.data
+      }
+    } catch (error: any) {
+      console.error('Error sending WhatsApp message:', error.response?.data || error.message)
+      return {
+        success: false,
+        error: error.response?.data || error.message
+      }
+    }
+  }
+
 
   private buildPaymentSettings(
     pixQrCode: string,
@@ -188,9 +227,9 @@ export class WhatsAppService {
       )
       return { success: true, data: response.data }
     } catch (error: any) {
-      return { 
-        success: false, 
-        error: error.response?.data || error.message 
+      return {
+        success: false,
+        error: error.response?.data || error.message
       }
     }
   }
