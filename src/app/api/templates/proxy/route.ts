@@ -68,16 +68,28 @@ export async function POST(req: Request) {
         // If user has specific App ID (unlikely for BSP but possible), we could use user.whatsappAppId if it existed.
         // For now, let's assume global App ID or it won't be set and Backend will error if not in its own env.
 
-        const response = await fetch(pythonEndpoint, {
+        const validResponse = await fetch(pythonEndpoint, {
             method: "POST",
             body: formData,
             headers: headers,
-            // Note: fetch automatically sets Content-Type to multipart/form-data with boundary when body is FormData
         })
 
-        const data = await response.json()
+        const textBody = await validResponse.text();
+        console.log("Python Backend Response Status:", validResponse.status);
+        console.log("Python Backend Response Body:", textBody);
 
-        return NextResponse.json(data, { status: response.status })
+        let data;
+        try {
+            data = JSON.parse(textBody);
+        } catch (e) {
+            console.error("Failed to parse JSON from backend:", textBody);
+            return NextResponse.json(
+                { status: "error", meta_error: { message: `Backend returned non-JSON: ${textBody.substring(0, 200)}`, type: "ProxyError" } },
+                { status: validResponse.status || 500 }
+            );
+        }
+
+        return NextResponse.json(data, { status: validResponse.status })
 
     } catch (error: any) {
         console.error("Proxy Error:", error)
