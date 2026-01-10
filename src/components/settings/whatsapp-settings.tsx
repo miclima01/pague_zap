@@ -38,8 +38,41 @@ export function WhatsAppSettings() {
     }
   }, [])
 
-  const generateToken = () => {
-    setFormData(prev => ({ ...prev, verifyToken: generateRandomToken() }))
+  const saveSettings = async (data: typeof formData) => {
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/settings/whatsapp', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          whatsappPhoneNumberId: data.phoneNumberId,
+          whatsappToken: data.whatsappToken,
+          whatsappBusinessId: data.businessId,
+          whatsappAppSecret: data.appSecret,
+          whatsappVerifyToken: data.verifyToken,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Erro ao salvar')
+
+      return true
+    } catch (error) {
+      console.error(error)
+      alert('Erro ao salvar configurações')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const generateToken = async () => {
+    const newToken = generateRandomToken()
+    const newData = { ...formData, verifyToken: newToken }
+    setFormData(newData)
+
+    // Auto-save
+    const success = await saveSettings(newData)
+    if (success) alert('Novo token gerado e salvo com sucesso!')
   }
 
   const copyToClipboard = (text: string) => {
@@ -54,13 +87,36 @@ export function WhatsAppSettings() {
       fetch('/api/settings')
         .then(res => res.json())
         .then(data => {
-          if (data.whatsappPhoneNumberId) {
+          if (!data.whatsappVerifyToken) {
+            // Se não tiver token salvo, gera um, atualiza estado E salva no banco
+            const newToken = generateRandomToken()
+            const newData = {
+              phoneNumberId: data.whatsappPhoneNumberId || '',
+              whatsappToken: data.whatsappToken || '',
+              businessId: data.whatsappBusinessId || '',
+              appSecret: data.whatsappAppSecret || '',
+              verifyToken: newToken
+            }
+            setFormData(newData)
+            // Salvar silenciosamente no background
+            fetch('/api/settings/whatsapp', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                whatsappPhoneNumberId: newData.phoneNumberId,
+                whatsappToken: newData.whatsappToken,
+                whatsappBusinessId: newData.businessId,
+                whatsappAppSecret: newData.appSecret,
+                whatsappVerifyToken: newData.verifyToken,
+              }),
+            }).catch(console.error)
+          } else {
             setFormData({
               phoneNumberId: data.whatsappPhoneNumberId || '',
               whatsappToken: data.whatsappToken || '',
               businessId: data.whatsappBusinessId || '',
               appSecret: data.whatsappAppSecret || '',
-              verifyToken: data.whatsappVerifyToken || generateRandomToken(),
+              verifyToken: data.whatsappVerifyToken || '',
             })
           }
         })
@@ -97,31 +153,8 @@ export function WhatsAppSettings() {
   }
 
   const handleSave = async () => {
-    setIsLoading(true)
-
-    try {
-      const response = await fetch('/api/settings/whatsapp', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          whatsappPhoneNumberId: formData.phoneNumberId,
-          whatsappToken: formData.whatsappToken,
-          whatsappBusinessId: formData.businessId,
-          whatsappAppSecret: formData.appSecret,
-          whatsappVerifyToken: formData.verifyToken,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Erro ao salvar configurações')
-      }
-
-      alert('Configurações salvas com sucesso!')
-    } catch (error) {
-      alert('Erro ao salvar configurações')
-    } finally {
-      setIsLoading(false)
-    }
+    const success = await saveSettings(formData)
+    if (success) alert('Configurações salvas com sucesso!')
   }
 
   return (
