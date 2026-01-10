@@ -342,7 +342,7 @@ export function WhatsAppSettings() {
                 Atualizar
               </Button>
             </div>
-            <div className="bg-black text-green-400 p-4 rounded-md font-mono text-xs h-64 overflow-y-auto">
+            <div className="bg-black text-green-400 p-4 rounded-md font-mono text-xs h-[600px] overflow-y-auto">
               {logs.length === 0 ? (
                 <p className="text-gray-500 italic">Nenhum log encontrado (ou falha ao carregar).</p>
               ) : (
