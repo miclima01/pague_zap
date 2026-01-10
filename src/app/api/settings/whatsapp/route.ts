@@ -23,6 +23,10 @@ export async function PUT(request: NextRequest) {
       whatsappVerifyToken
     } = body
 
+    console.log("Settings Update Request - User:", session.user.id);
+    console.log("Payload:", { whatsappBusinessId, whatsappToken: whatsappToken ? "***" : "null" });
+
+
     const user = await prisma.user.update({
       where: { id: session.user.id },
       data: {
@@ -34,7 +38,7 @@ export async function PUT(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ message: "Configurações salvas com sucesso" })
+    return NextResponse.json({ message: "Configurações salvas com sucesso", user })
   } catch (error) {
     console.error("Erro ao salvar configurações WhatsApp:", error)
     return NextResponse.json(
