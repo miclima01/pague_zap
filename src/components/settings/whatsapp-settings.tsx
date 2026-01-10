@@ -9,6 +9,15 @@ import { useState, useEffect } from 'react'
 import { CheckCircle2, AlertCircle, Copy, RefreshCw } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
+function generateRandomToken() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  let result = 'paguezap_'
+  for (let i = 0; i < 24; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
 export function WhatsAppSettings() {
   const { data: session } = useSession()
   const [isLoading, setIsLoading] = useState(false)
@@ -30,12 +39,7 @@ export function WhatsAppSettings() {
   }, [])
 
   const generateToken = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let result = 'paguezap_'
-    for (let i = 0; i < 24; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    setFormData(prev => ({ ...prev, verifyToken: result }))
+    setFormData(prev => ({ ...prev, verifyToken: generateRandomToken() }))
   }
 
   const copyToClipboard = (text: string) => {
@@ -56,7 +60,7 @@ export function WhatsAppSettings() {
               whatsappToken: data.whatsappToken || '',
               businessId: data.whatsappBusinessId || '',
               appSecret: data.whatsappAppSecret || '',
-              verifyToken: data.whatsappVerifyToken || '',
+              verifyToken: data.whatsappVerifyToken || generateRandomToken(),
             })
           }
         })
