@@ -94,16 +94,7 @@ export async function POST(request: NextRequest) {
                                 if (signature === expectedSignature) {
                                     isSignatureValid = true
                                 } else {
-                                    console.warn(`Webhook: Assinatura inválida com Secret do Usuário ${user.id}. Esperado: ${expectedSignature}, Recebido: ${signature}`)
-                                    // Save the debug info for the User Secret failure
-                                    if (logId) await prisma.webhookLog.update({
-                                        where: { id: logId },
-                                        data: {
-                                            // Soft update - will be overwritten if refined or final error occurs, 
-                                            // but ensures we have a record if we stop here or if global also fails.
-                                            error: `Sig Mismatch (User). Rec: ${signature.substring(0, 15)}... Exp: ${expectedSignature.substring(0, 15)}...`
-                                        }
-                                    })
+                                    console.warn(`Webhook: Assinatura inválida com Secret do Usuário ${user.id}`)
                                 }
                             }
 
@@ -118,15 +109,7 @@ export async function POST(request: NextRequest) {
                                     console.log(`Webhook: Assinatura validada via Fallback (Global ENV) para usuário ${user.id}`)
                                     isSignatureValid = true
                                 } else {
-                                    console.warn(`Webhook: Assinatura inválida também com Global ENV. Esperado: ${expectedSignatureEnv}`)
-                                    // Save the debug info for the last failed attempt (Global ENV)
-                                    if (logId) await prisma.webhookLog.update({
-                                        where: { id: logId },
-                                        data: {
-                                            // Keep this warning "soft" until the final check fails
-                                            error: `Sig Mismatch (Global). Rec: ${signature.substring(0, 15)}... Exp: ${expectedSignatureEnv.substring(0, 15)}...`
-                                        }
-                                    })
+                                    console.warn(`Webhook: Assinatura inválida também com Global ENV.`)
                                 }
                             }
 
@@ -136,7 +119,7 @@ export async function POST(request: NextRequest) {
                                     where: { id: logId },
                                     data: {
                                         status: 'INVALID_SIGNATURE',
-                                        error: `Assinatura inválida. Recebido: ${signature}. GlobalEnv: ${process.env.WHATSAPP_APP_SECRET ? 'DEFINED' : 'UNDEFINED'}`
+                                        error: 'Assinatura inválida (tanto User quanto Global)'
                                     }
                                 })
                                 return new NextResponse('Unauthorized: Invalid Signature', { status: 401 })
