@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-
-// Token de verificação para o webhook (definido no painel do Facebook)
-// Em produção, deve estar em variáveis de ambiente
-const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "pague_zap_verify_token"
+import crypto from "crypto"
 
 /**
  * GET request para verificar o webhook (Challenge)
@@ -16,12 +13,24 @@ export async function GET(request: NextRequest) {
     const challenge = searchParams.get('hub.challenge')
 
     if (mode && token) {
-        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-            console.log('Webhook verificado com sucesso!')
-            return new NextResponse(challenge, { status: 200 })
-        } else {
-            return new NextResponse('Forbidden', { status: 403 })
+        if (mode === 'subscribe') {
+            // 1. Verifica no Banco de Dados
+            const user = await prisma.user.findFirst({
+                where: { whatsappVerifyToken: token }
+            })
+
+            if (user) {
+                console.log(`Webhook verificado para usuário: ${user.id}`)
+                return new NextResponse(challenge, { status: 200 })
+            }
+
+            // 2. Fallback para Variável de Ambiente
+            if (process.env.WHATSAPP_VERIFY_TOKEN && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+                console.log('Webhook verificado via ENV')
+                return new NextResponse(challenge, { status: 200 })
+            }
         }
+        return new NextResponse('Forbidden', { status: 403 })
     }
 
     return new NextResponse('Bad Request', { status: 400 })
@@ -32,114 +41,180 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json()
+        const rawBody = await request.text()
+        const body = JSON.parse(rawBody)
 
-        // Verificar se é uma notificação do WhatsApp
+        // 1. Resiliência: Salvar Log Bruto
+        try {
+            await prisma.webhookLog.create({
+                data: {
+                    payload: body,
+                    status: 'RECEIVED'
+                }
+            })
+        } catch (logError) {
+            console.error('Erro ao salvar log do webhook:', logError)
+        }
+
+        // 2. Processamento
         if (body.object === 'whatsapp_business_account') {
+            const entries = body.entry || []
 
-            for (const entry of body.entry) {
+            for (const entry of entries) {
                 for (const change of entry.changes) {
                     if (change.value && change.value.messages) {
                         const phoneNumberId = change.value.metadata.phone_number_id
 
-                        // Buscar o usuário dono deste número
+                        // Buscar Usuario (Tenant) pelo ID do Telefone
                         const user = await prisma.user.findFirst({
                             where: { whatsappPhoneNumberId: phoneNumberId }
                         })
 
-                        if (!user) {
-                            console.log(`Recebida mensagem para número não configurado: ${phoneNumberId}`)
-                            continue
-                        }
+                        if (user) {
+                            // Validar Assinatura se o usuário tiver App Secret configurado
+                            if (user.whatsappAppSecret) {
+                                const signature = request.headers.get('x-hub-signature-256')
 
-                        // Processar mensagens
-                        for (const message of change.value.messages) {
-                            await processMessage(user.id, message, change.value.contacts)
+                                if (!signature) {
+                                    console.warn(`Webhook: Assinatura ausente para usuário ${user.id}`)
+                                    return new NextResponse('Unauthorized: Missing Signature', { status: 401 })
+                                }
+
+                                const expectedSignature = 'sha256=' + crypto
+                                    .createHmac('sha256', user.whatsappAppSecret)
+                                    .update(rawBody)
+                                    .digest('hex')
+
+                                if (signature !== expectedSignature) {
+                                    console.warn(`Webhook: Assinatura inválida para usuário ${user.id}`)
+                                    // Retornar 401 rejeita a requisição, a Meta tentará reenviar.
+                                    // Se a chave estiver errada, vai continuar falhando.
+                                    return new NextResponse('Unauthorized: Invalid Signature', { status: 401 })
+                                }
+                            } else if (process.env.WHATSAPP_APP_SECRET) {
+                                // Fallback para ENV global
+                                const signature = request.headers.get('x-hub-signature-256')
+                                const expectedSignature = 'sha256=' + crypto
+                                    .createHmac('sha256', process.env.WHATSAPP_APP_SECRET)
+                                    .update(rawBody)
+                                    .digest('hex')
+
+                                if (signature && signature !== expectedSignature) {
+                                    console.warn('Webhook: Assinatura inválida (Global ENV)')
+                                    return new NextResponse('Unauthorized', { status: 401 })
+                                }
+                            }
+
+                            // Processar Mensagens
+                            for (const message of change.value.messages) {
+                                await processMessage(user.id, message, change.value.contacts)
+                            }
+                        } else {
+                            console.warn(`Webhook: Tenant não encontrado para Phone ID ${phoneNumberId}`)
                         }
                     }
                 }
             }
-
-            return NextResponse.json({ success: true }, { status: 200 })
         }
 
-        return NextResponse.json({ success: false, message: 'Not a WhatsApp event' }, { status: 404 })
+        return NextResponse.json({ success: true }, { status: 200 })
+
     } catch (error) {
-        console.error('Erro ao processar webhook WhatsApp:', error)
-        return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 })
+        console.error('Erro crítico no Webhook:', error)
+        return NextResponse.json({ success: false, error: 'Internal Error' }, { status: 500 })
     }
 }
 
+/**
+ * Função auxiliar para processar e salvar a mensagem
+ */
 async function processMessage(userId: string, message: any, contacts: any[]) {
-    // Extrair dados do contato
-    const from = message.from
-    const contactInfo = contacts.find((c: any) => c.wa_id === from)
-    const contactName = contactInfo?.profile?.name || from
+    try {
+        const from = message.from
+        const waId = message.id
+        const timestamp = message.timestamp
 
-    // Buscar ou criar contato
-    let contact = await prisma.contact.findUnique({
-        where: {
-            userId_phone: {
-                userId,
-                phone: from
-            }
-        }
-    })
+        // Dados do contato
+        const contactInfo = contacts?.find((c: any) => c.wa_id === from)
+        const profileName = contactInfo?.profile?.name || from
 
-    if (!contact) {
-        contact = await prisma.contact.create({
-            data: {
-                userId,
-                phone: from,
-                name: contactName,
+        // Buscar ou Criar Contato
+        let contact = await prisma.contact.findUnique({
+            where: {
+                userId_phone: { userId, phone: from }
             }
         })
-    } else if (contactName && contactName !== from && !contact.name) {
-        // Atualizar nome se disponível e ainda não salvo
+
+        if (!contact) {
+            contact = await prisma.contact.create({
+                data: {
+                    userId,
+                    phone: from,
+                    name: profileName
+                }
+            })
+        } else if (profileName && profileName !== from && !contact.name) {
+            await prisma.contact.update({
+                where: { id: contact.id },
+                data: { name: profileName }
+            })
+        }
+
+        // Extrair Conteúdo
+        let content = ''
+        let type = message.type
+
+        switch (type) {
+            case 'text':
+                content = message.text.body
+                break
+            case 'image':
+                content = message.image.caption || '[Imagem]'
+                break
+            case 'button':
+                content = message.button.text
+                type = 'text'
+                break
+            case 'interactive':
+                if (message.interactive.type === 'button_reply') {
+                    content = message.interactive.button_reply.title
+                } else if (message.interactive.type === 'list_reply') {
+                    content = message.interactive.list_reply.title
+                } else {
+                    content = '[Interativo]'
+                }
+                type = 'text'
+                break
+            default:
+                content = `[${type}]`
+        }
+
+        // Deduplicação
+        const existing = await prisma.message.findUnique({
+            where: { whatsappId: waId }
+        })
+        if (existing) return
+
+        // Salvar Mensagem
+        await prisma.message.create({
+            data: {
+                contactId: contact.id,
+                content,
+                type,
+                direction: 'INBOUND',
+                status: 'DELIVERED',
+                whatsappId: waId,
+                createdAt: new Date(parseInt(timestamp) * 1000)
+            }
+        })
+
+        // Atualizar contato
         await prisma.contact.update({
             where: { id: contact.id },
-            data: { name: contactName }
+            data: { lastMessageAt: new Date() }
         })
+
+    } catch (err) {
+        console.error('Erro ao processar mensagem individual:', err)
     }
-
-    // Tratar conteúdo da mensagem
-    let content = ''
-    let type = message.type
-
-    if (type === 'text') {
-        content = message.text.body
-    } else if (type === 'image') {
-        content = '[Imagem]' // Simplificação por enquanto
-    } else if (type === 'button') {
-        content = message.button.text
-        type = 'text' // Tratar resposta de botão como texto
-    } else {
-        content = `[${type}]`
-    }
-
-    // Verificar se mensagem já existe (deduamploação via whatsappId)
-    const existingMessage = await prisma.message.findUnique({
-        where: { whatsappId: message.id }
-    })
-
-    if (existingMessage) return
-
-    // Salvar mensagem
-    await prisma.message.create({
-        data: {
-            contactId: contact.id,
-            content,
-            type,
-            direction: 'INBOUND',
-            status: 'DELIVERED',
-            whatsappId: message.id,
-            createdAt: new Date(parseInt(message.timestamp) * 1000)
-        }
-    })
-
-    // Atualizar última mensagem do contato
-    await prisma.contact.update({
-        where: { id: contact.id },
-        data: { lastMessageAt: new Date() }
-    })
 }

@@ -18,6 +18,8 @@ export function WhatsAppSettings() {
     phoneNumberId: '',
     whatsappToken: '',
     businessId: '',
+    appSecret: '',
+    verifyToken: '',
   })
 
   useEffect(() => {
@@ -31,6 +33,8 @@ export function WhatsAppSettings() {
               phoneNumberId: data.whatsappPhoneNumberId || '',
               whatsappToken: data.whatsappToken || '',
               businessId: data.whatsappBusinessId || '',
+              appSecret: data.whatsappAppSecret || '',
+              verifyToken: data.whatsappVerifyToken || '',
             })
           }
         })
@@ -77,6 +81,8 @@ export function WhatsAppSettings() {
           whatsappPhoneNumberId: formData.phoneNumberId,
           whatsappToken: formData.whatsappToken,
           whatsappBusinessId: formData.businessId,
+          whatsappAppSecret: formData.appSecret,
+          whatsappVerifyToken: formData.verifyToken,
         }),
       })
 
@@ -146,6 +152,34 @@ export function WhatsAppSettings() {
             value={formData.businessId}
             onChange={(e) => setFormData({ ...formData, businessId: e.target.value })}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="appSecret">WhatsApp App Secret</Label>
+          <Input
+            id="appSecret"
+            placeholder="Chave secreta do aplicativo Meta"
+            type="password"
+            value={formData.appSecret}
+            onChange={(e) => setFormData({ ...formData, appSecret: e.target.value })}
+          />
+          <p className="text-sm text-muted-foreground">
+            Usado para validar a integridade das mensagens (Webhook Security)
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="verifyToken">Webhook Verify Token</Label>
+          <Input
+            id="verifyToken"
+            placeholder="Sua senha forte (ex: PagueZap_2026)"
+            type="text"
+            value={formData.verifyToken}
+            onChange={(e) => setFormData({ ...formData, verifyToken: e.target.value })}
+          />
+          <p className="text-sm text-muted-foreground">
+            Defina este mesmo valor no painel da Meta ao configurar o Webhook
+          </p>
         </div>
 
         {connectionStatus === 'success' && (

@@ -20,6 +20,8 @@ model User {
   whatsappPhoneNumberId String?
   whatsappToken         String?
   whatsappBusinessId    String?
+  whatsappAppSecret     String?   // Segredo do App (para validação de assinatura)
+  whatsappVerifyToken   String?   // Token de verificação do Webhook
   
   // Template configurado
   templateName          String?   @default("paymentswa")
@@ -135,3 +137,12 @@ model Message {
   updatedAt       DateTime  @updatedAt
 }
 
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  provider  String   @default("whatsapp")
+  payload   Json
+  status    String   // PROCESSED, ERROR
+  error     String?
+  createdAt DateTime @default(now())
+}

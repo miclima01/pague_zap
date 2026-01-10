@@ -15,7 +15,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { whatsappPhoneNumberId, whatsappToken, whatsappBusinessId } = body
+    const {
+      whatsappPhoneNumberId,
+      whatsappToken,
+      whatsappBusinessId,
+      whatsappAppSecret,
+      whatsappVerifyToken
+    } = body
 
     const user = await prisma.user.update({
       where: { id: session.user.id },
@@ -23,6 +29,8 @@ export async function PUT(request: NextRequest) {
         whatsappPhoneNumberId: whatsappPhoneNumberId || null,
         whatsappToken: whatsappToken || null,
         whatsappBusinessId: whatsappBusinessId || null,
+        whatsappAppSecret: whatsappAppSecret || null,
+        whatsappVerifyToken: whatsappVerifyToken || null,
       },
     })
 
