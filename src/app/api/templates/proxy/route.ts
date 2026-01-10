@@ -60,13 +60,19 @@ export async function POST(req: Request) {
         const headers = new Headers()
         headers.set("X-Meta-Token", user.whatsappToken)
 
-        // If App ID is global for the platform:
-        const globalAppId = process.env.META_APP_ID
-        if (globalAppId) {
-            headers.set("X-Meta-App-Id", globalAppId)
-        }
         // If user has specific App ID (unlikely for BSP but possible), we could use user.whatsappAppId if it existed.
         // For now, let's assume global App ID or it won't be set and Backend will error if not in its own env.
+
+        // Forward Cookies and other headers to bypass Vercel Auth in Proxy requests
+        const incomingHeaders = new Headers(req.headers);
+        // We carefully select what to forward. 'cookie' is crucial for Vercel Auth.
+        if (incomingHeaders.get("cookie")) {
+            headers.set("cookie", incomingHeaders.get("cookie")!);
+        }
+        // Also forward user-agent for good measure
+        if (incomingHeaders.get("user-agent")) {
+            headers.set("user-agent", incomingHeaders.get("user-agent")!);
+        }
 
         const validResponse = await fetch(pythonEndpoint, {
             method: "POST",
