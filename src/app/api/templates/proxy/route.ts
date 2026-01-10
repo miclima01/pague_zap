@@ -45,7 +45,16 @@ export async function POST(req: Request) {
         // We forward the form data. 
         // We inject the token into a Header.
 
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
+        // Determine backend URL
+        let backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+        if (!backendUrl) {
+            if (process.env.VERCEL_URL) {
+                backendUrl = `https://${process.env.VERCEL_URL}`;
+            } else {
+                backendUrl = "http://localhost:8000";
+            }
+        }
         const pythonEndpoint = `${backendUrl}/api/templates/whatsapp`
 
         const headers = new Headers()
