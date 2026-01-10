@@ -136,7 +136,7 @@ export default function CreateTemplateForm({ wabaId }: { wabaId: string }) {
                             checked={useOrderDetails}
                             onCheckedChange={(checked) => setValue("use_order_details", checked)}
                         />
-                        <Label htmlFor="use_order_details">Add "Review and Pay" Button (Order Details)</Label>
+                        <Label htmlFor="use_order_details">Add &quot;Review and Pay&quot; Button (Order Details)</Label>
                     </div>
 
                     {error && (
