@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useState, useEffect } from 'react'
-import { CheckCircle2, AlertCircle } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Copy, RefreshCw } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
 export function WhatsAppSettings() {
@@ -21,6 +21,28 @@ export function WhatsAppSettings() {
     appSecret: '',
     verifyToken: '',
   })
+  const [webhookUrl, setWebhookUrl] = useState('')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setWebhookUrl(`${window.location.origin}/api/webhooks/whatsapp`)
+    }
+  }, [])
+
+  const generateToken = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    let result = 'paguezap_'
+    for (let i = 0; i < 24; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    setFormData(prev => ({ ...prev, verifyToken: result }))
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    // Could add toast here
+    alert('Copiado para a área de transferência!')
+  }
 
   useEffect(() => {
     // Carregar configurações existentes
@@ -154,6 +176,45 @@ export function WhatsAppSettings() {
           />
         </div>
 
+        <div className="space-y-4 border-t pt-4">
+          <h3 className="text-lg font-semibold">Configuração do Webhook (Meta)</h3>
+
+          <div className="space-y-2">
+            <Label>URL de Callback</Label>
+            <div className="flex gap-2">
+              <Input readOnly value={webhookUrl} className="bg-muted" />
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(webhookUrl)}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Coloque esta URL no campo "URL de callback" na Meta.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="verifyToken">Webhook Verify Token</Label>
+            <div className="flex gap-2">
+              <Input
+                id="verifyToken"
+                placeholder="Gerar token seguro..."
+                type="text"
+                value={formData.verifyToken}
+                onChange={(e) => setFormData({ ...formData, verifyToken: e.target.value })}
+              />
+              <Button variant="outline" size="icon" onClick={generateToken} title="Gerar novo token">
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(formData.verifyToken)}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Coloque este token no campo "Verificar token" na Meta.
+            </p>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="appSecret">WhatsApp App Secret</Label>
           <Input
@@ -164,21 +225,7 @@ export function WhatsAppSettings() {
             onChange={(e) => setFormData({ ...formData, appSecret: e.target.value })}
           />
           <p className="text-sm text-muted-foreground">
-            Usado para validar a integridade das mensagens (Webhook Security)
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="verifyToken">Webhook Verify Token</Label>
-          <Input
-            id="verifyToken"
-            placeholder="Sua senha forte (ex: PagueZap_2026)"
-            type="text"
-            value={formData.verifyToken}
-            onChange={(e) => setFormData({ ...formData, verifyToken: e.target.value })}
-          />
-          <p className="text-sm text-muted-foreground">
-            Defina este mesmo valor no painel da Meta ao configurar o Webhook
+            Encontre em: Painel do App Meta -&gt; Configurações do App -&gt; Básico
           </p>
         </div>
 
