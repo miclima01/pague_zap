@@ -120,7 +120,8 @@ export async function POST(req: Request) {
                 "type": "BUTTONS",
                 "buttons": [
                     {
-                        "type": "ORDER_DETAILS"
+                        "type": "ORDER_DETAILS",
+                        "text": "Review and Pay"
                     }
                 ]
             });
