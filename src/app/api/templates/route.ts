@@ -23,8 +23,12 @@ export async function GET(req: Request) {
         const appId = user.whatsappAppId || process.env.META_APP_ID
         if (!appId) return new NextResponse("App ID missing", { status: 500 })
 
+        console.log(`[ListTemplates] Fetching for WABA ID: ${user.whatsappBusinessId} with App ID: ${appId}`);
+
         const service = new WhatsAppTemplateService(appId, user.whatsappToken)
         const templates = await service.getTemplates(user.whatsappBusinessId)
+
+        console.log(`[ListTemplates] Response:`, JSON.stringify(templates));
 
         return NextResponse.json(templates)
     } catch (error: any) {
