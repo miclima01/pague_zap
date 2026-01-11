@@ -30,15 +30,17 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError("Email ou senha inválidos")
+        setIsLoading(false) // Only stop loading on error
       } else {
-        router.push("/dashboard")
+        // Keep loading true while redirecting
         router.refresh()
+        router.push("/dashboard")
       }
     } catch (error) {
       setError("Erro ao fazer login")
-    } finally {
       setIsLoading(false)
     }
+    // Removed finally block to prevent toggling isLoading on success
   }
 
   return (
@@ -57,7 +59,7 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

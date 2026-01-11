@@ -1,20 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { signIn } from "next-auth/react"
+
+// ... (imports remain)
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  // ... (state remains)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,13 +25,26 @@ export default function RegisterPage() {
 
       if (!response.ok) {
         setError(data.error || "Erro ao criar conta")
+        setIsLoading(false)
         return
       }
 
-      router.push("/login?registered=true")
+      // Auto-login
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        // Technically account created but auto-login failed (rare)
+        router.push("/login?registered=true")
+      } else {
+        router.push("/dashboard")
+        router.refresh()
+      }
     } catch (error) {
       setError("Erro ao criar conta")
-    } finally {
       setIsLoading(false)
     }
   }
@@ -59,7 +65,7 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="name">Nome</Label>
               <Input
