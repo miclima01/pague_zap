@@ -21,14 +21,11 @@ export default function CreateTemplateForm({ wabaId }: { wabaId: string }) {
             name: "",
             language: "pt_BR",
             body_text: "Olá {{1}}! Seu pedido de *{{2}}* foi gerado com sucesso.\n\nCopie o código pix abaixo e pague no app do seu banco.",
-            body_examples: '[[\"Michael\", \"Produto Teste\"]]',
-            use_order_details: false,
-            header_image_url: ""
+            body_examples: '[[\"Michael\", \"Produto Teste\"]]'
         }
     })
 
-    // Watch for order details toggle to force defaults
-    const useOrderDetails = watch("use_order_details")
+
 
     const onSubmit = async (data: any) => {
         setIsLoading(true)
@@ -41,7 +38,7 @@ export default function CreateTemplateForm({ wabaId }: { wabaId: string }) {
         formData.append("language", data.language)
         formData.append("body_text", data.body_text)
         formData.append("body_examples", data.body_examples)
-        formData.append("use_order_details", data.use_order_details.toString())
+        formData.append("use_order_details", "true")
 
         // Category is UTILITY if order details, else UTILITY default for now
         formData.append("category", "UTILITY")
@@ -50,10 +47,8 @@ export default function CreateTemplateForm({ wabaId }: { wabaId: string }) {
         const fileInput = (document.getElementById("header_image_file") as HTMLInputElement)?.files?.[0]
         if (fileInput) {
             formData.append("header_image_file", fileInput)
-        } else if (data.header_image_url) {
-            formData.append("header_image_url", data.header_image_url)
         } else {
-            setError("Please provide a header image (File or URL)")
+            setError("Please upload a header image")
             setIsLoading(false)
             return
         }
@@ -107,16 +102,8 @@ export default function CreateTemplateForm({ wabaId }: { wabaId: string }) {
 
                     <div className="space-y-2">
                         <Label>Header Image</Label>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="header_image_file" className="text-xs">Upload File</Label>
-                                <Input id="header_image_file" type="file" accept="image/png, image/jpeg" />
-                            </div>
-                            <div>
-                                <Label htmlFor="header_image_url" className="text-xs">Or Image URL</Label>
-                                <Input id="header_image_url" {...register("header_image_url")} placeholder="https://..." />
-                            </div>
-                        </div>
+                        <Label htmlFor="header_image_file" className="text-xs">Upload Header Image (JPG/PNG)</Label>
+                        <Input id="header_image_file" type="file" accept="image/png, image/jpeg" />
                     </div>
 
                     <div className="space-y-2">
@@ -130,14 +117,7 @@ export default function CreateTemplateForm({ wabaId }: { wabaId: string }) {
                         <Input id="body_examples" {...register("body_examples")} />
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                        <Switch
-                            id="use_order_details"
-                            checked={useOrderDetails}
-                            onCheckedChange={(checked) => setValue("use_order_details", checked)}
-                        />
-                        <Label htmlFor="use_order_details">Add &quot;Review and Pay&quot; Button (Order Details)</Label>
-                    </div>
+
 
                     {error && (
                         <Alert variant="destructive">

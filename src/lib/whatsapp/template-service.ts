@@ -67,21 +67,15 @@ export class WhatsAppTemplateService {
         return uploadId;
     }
 
-    async uploadFileGetHandle(uploadSessionId: string, fileBuffer: Buffer): Promise<string> {
+    async uploadFileGetHandle(uploadSessionId: string, fileBuffer: Buffer, mimeType: string, fileName: string): Promise<string> {
         // ID typically like "upload:123". API expects POST /{upload_session_id}
         const url = `${this.baseUrl}/${uploadSessionId}`;
 
-        console.log(`Uploading bytes to session ${uploadSessionId}`);
-
-        // For binary upload in this specific endpoint, Meta expects the file content as the body
-        // AND headers: Authorization, file_offset.
-        // It's NOT multipart for the resuming phase usually? 
-        // Wait, Python implementation used `files={"file": ...}` which is multipart.
-        // Let's stick to the Python implementation: Multipart.
+        console.log(`Uploading bytes to session ${uploadSessionId} (${mimeType}, ${fileName})`);
 
         const formData = new FormData();
-        const blob = new Blob([new Uint8Array(fileBuffer)]);
-        formData.append("file", blob); // Check if filename needed? Python sent "header_image"
+        const blob = new Blob([new Uint8Array(fileBuffer)], { type: mimeType });
+        formData.append("file", blob, fileName);
 
         const headers = {
             "Authorization": `Bearer ${this.token}`,

@@ -46,8 +46,8 @@ export async function POST(req: Request) {
         const category = (formData.get("category") as string) || "UTILITY";
         const bodyTextRaw = formData.get("body_text") as string;
         const bodyExamplesRaw = formData.get("body_examples") as string;
-        const useOrderDetails = formData.get("use_order_details") === "true";
-        const headerImageUrl = formData.get("header_image_url") as string | null;
+        // const useOrderDetails = formData.get("use_order_details") === "true"; // Deprecated, forced true for now or based on category
+        const useOrderDetails = true;
         const headerImageFile = formData.get("header_image_file") as File | null;
 
         // Validation
@@ -59,6 +59,8 @@ export async function POST(req: Request) {
         try {
             examplesList = JSON.parse(bodyExamplesRaw);
         } catch (e) {
+            // Keep as string if not JSON, some templates might just take raw string?
+            // Actually Meta needs examples object structure.
             return new NextResponse("Invalid JSON for body_examples", { status: 400 })
         }
 
@@ -78,13 +80,8 @@ export async function POST(req: Request) {
             if (fileLength > 5 * 1024 * 1024) {
                 return new NextResponse("Image exceeds 5MB limit.", { status: 400 })
             }
-        } else if (headerImageUrl) {
-            const result = await service.downloadImage(headerImageUrl);
-            fileBuffer = result.buffer;
-            mimeType = result.contentType;
-            fileLength = result.contentLength;
         } else {
-            return new NextResponse("Must provide either header_image_file or header_image_url", { status: 400 })
+            return new NextResponse("Header image file is required.", { status: 400 })
         }
 
         // 2. Start Resumable Upload Flow
@@ -92,7 +89,7 @@ export async function POST(req: Request) {
         const uploadId = await service.createUploadSession(fileLength, mimeType, fileName);
 
         // Step 2: Upload File
-        const headerHandle = await service.uploadFileGetHandle(uploadId, fileBuffer);
+        const headerHandle = await service.uploadFileGetHandle(uploadId, fileBuffer, mimeType, fileName);
 
         // 3. Construct Template Payload
         // Enforce UTILITY if Order Details
