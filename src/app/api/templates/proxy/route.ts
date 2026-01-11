@@ -69,8 +69,8 @@ export async function POST(req: Request) {
         // 1. Handle Image Source
         let fileBuffer: Buffer;
         let fileLength: number;
-        let mimeType: string = "image/png"; // Normalized to PNG
-        let fileName: string = "header.png"; // Normalized name
+        let mimeType: string = "image/jpeg"; // Normalized to JPEG (Nuclear Option)
+        let fileName: string = "header.jpg"; // Normalized name
 
         if (headerImageFile && headerImageFile.size > 0) {
             try {
@@ -78,13 +78,12 @@ export async function POST(req: Request) {
                 const inputBuffer = Buffer.from(arrayBuffer);
 
                 // NORMALIZE IMAGE:
-                // 1. Resize to max 1600px width (prevents huge images)
-                // 2. Force PNG format (standardizes uploads)
-                // 3. Ensure RGB/RGBA (removes CMYK/16-bit issues)
+                // 1. Resize to max 1600px width
+                // 2. Force JPEG format (Meta prefers JPEG for headers often)
+                // 3. Ensure RGB (no alpha for JPEG)
                 fileBuffer = await sharp(inputBuffer)
                     .resize({ width: 1600, withoutEnlargement: true })
-                    .toFormat("png")
-                    .ensureAlpha()
+                    .toFormat("jpeg", { quality: 90 }) // Good quality JPEG
                     .toBuffer();
 
                 fileLength = fileBuffer.length;
