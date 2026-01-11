@@ -73,23 +73,36 @@ export class WhatsAppTemplateService {
 
         console.log(`Uploading bytes to session ${uploadSessionId} (${mimeType}, ${fileName})`);
 
-        // Use File object for better FormData compatibility
-        const file = new File([new Uint8Array(fileBuffer)], fileName, { type: mimeType });
+        // MANUAL MULTIPART CONSTRUCTION (To bypass FormData potential corruption)
+        const boundary = "----WhatsAppUploadBoundary" + Math.random().toString(36).substring(2);
 
-        console.log(`Session Upload - File Size: ${file.size}, Expected: ${fileBuffer.length}`);
+        // Header part
+        const preAmble = `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+            `Content-Type: ${mimeType}\r\n\r\n`;
 
-        const formData = new FormData();
-        formData.append("file", file);
+        // Footer part
+        const postAmble = `\r\n--${boundary}--\r\n`;
+
+        // Combine into single Buffer
+        const bodyBuffer = Buffer.concat([
+            Buffer.from(preAmble, 'utf-8'),
+            fileBuffer,
+            Buffer.from(postAmble, 'utf-8')
+        ]);
+
+        console.log(`Session Upload - Payload Size: ${bodyBuffer.length} (File: ${fileBuffer.length})`);
 
         const headers: Record<string, string> = {
             "Authorization": `Bearer ${this.token}`,
-            "file_offset": "0"
+            "file_offset": "0",
+            "Content-Type": `multipart/form-data; boundary=${boundary}`
         };
 
         const response = await fetch(url, {
             method: "POST",
             headers: headers,
-            body: formData
+            body: bodyBuffer // Send raw buffer with manual boundary
         });
 
         if (!response.ok) {
