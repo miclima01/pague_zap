@@ -73,9 +73,13 @@ export class WhatsAppTemplateService {
 
         console.log(`Uploading bytes to session ${uploadSessionId} (${mimeType}, ${fileName})`);
 
+        // Use File object for better FormData compatibility
+        const file = new File([new Uint8Array(fileBuffer)], fileName, { type: mimeType });
+
+        console.log(`Session Upload - File Size: ${file.size}, Expected: ${fileBuffer.length}`);
+
         const formData = new FormData();
-        const blob = new Blob([new Uint8Array(fileBuffer)], { type: mimeType });
-        formData.append("file", blob, fileName);
+        formData.append("file", file);
 
         const headers: Record<string, string> = {
             "Authorization": `Bearer ${this.token}`,
