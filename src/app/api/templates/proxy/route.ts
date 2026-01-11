@@ -3,6 +3,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/auth-options"
 import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import { WhatsAppTemplateService } from "@/lib/whatsapp/template-service"
+import sharp from "sharp";
 
 export async function POST(req: Request) {
     try {
