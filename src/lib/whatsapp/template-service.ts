@@ -99,10 +99,13 @@ export class WhatsAppTemplateService {
         }
 
         const data = await response.json();
+        console.log(`Upload step2 response: ${JSON.stringify(data)}`);
+
         const handle = data.h;
         if (!handle) {
             throw new Error(`No asset handle returned. Response: ${JSON.stringify(data)}`);
         }
+        console.log(`Header handle (h): ${handle}`);
 
         return handle;
     }
@@ -111,6 +114,7 @@ export class WhatsAppTemplateService {
         const url = `${this.baseUrl}/${wabaId}/message_templates`;
 
         console.log(`Creating template ${payload.name} for WABA ${wabaId}`);
+        console.log(`Full Template Payload: ${JSON.stringify(payload, null, 2)}`);
 
         const response = await fetch(url, {
             method: "POST",
