@@ -141,4 +141,12 @@ export class WhatsAppTemplateService {
             meta_trace_id: fbTraceId
         };
     }
+
+    async getMessageTemplate(wabaId: string, templateName: string): Promise<any> {
+        const url = `${this.baseUrl}/${wabaId}/message_templates?name=${templateName}`;
+        const response = await fetch(url, { headers: this.headers });
+        if (!response.ok) return null;
+        const data = await response.json();
+        return data.data?.[0] || null;
+    }
 }
