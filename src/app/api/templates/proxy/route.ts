@@ -74,8 +74,19 @@ export async function POST(req: Request) {
             const arrayBuffer = await headerImageFile.arrayBuffer();
             fileBuffer = Buffer.from(arrayBuffer);
             fileLength = fileBuffer.length;
-            mimeType = headerImageFile.type || "image/jpeg";
             fileName = headerImageFile.name || fileName;
+
+            // Force MIME type detection from extension to avoid browser misclassification
+            // (e.g. "Audio (1).png" might be sent as non-image)
+            const ext = fileName.split('.').pop()?.toLowerCase();
+            if (ext === "png") {
+                mimeType = "image/png";
+            } else if (ext === "jpg" || ext === "jpeg") {
+                mimeType = "image/jpeg";
+            } else {
+                // Fallback to browser type or default
+                mimeType = headerImageFile.type || "image/jpeg";
+            }
 
             if (fileLength > 5 * 1024 * 1024) {
                 return new NextResponse("Image exceeds 5MB limit.", { status: 400 })
