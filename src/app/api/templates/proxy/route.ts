@@ -69,29 +69,33 @@ export async function POST(req: Request) {
         // 1. Handle Image Source
         let fileBuffer: Buffer;
         let fileLength: number;
-        let mimeType: string = "image/jpeg";
-        let fileName: string = "header_image.jpg";
+        let mimeType: string = "image/png"; // Normalized to PNG
+        let fileName: string = "header.png"; // Normalized name
 
         if (headerImageFile && headerImageFile.size > 0) {
-            const arrayBuffer = await headerImageFile.arrayBuffer();
-            fileBuffer = Buffer.from(arrayBuffer);
-            fileLength = fileBuffer.length;
-            fileName = headerImageFile.name || fileName;
+            try {
+                const arrayBuffer = await headerImageFile.arrayBuffer();
+                const inputBuffer = Buffer.from(arrayBuffer);
 
-            // Force MIME type detection from extension to avoid browser misclassification
-            // (e.g. "Audio (1).png" might be sent as non-image)
-            const ext = fileName.split('.').pop()?.toLowerCase();
-            if (ext === "png") {
-                mimeType = "image/png";
-            } else if (ext === "jpg" || ext === "jpeg") {
-                mimeType = "image/jpeg";
-            } else {
-                // Fallback to browser type or default
-                mimeType = headerImageFile.type || "image/jpeg";
-            }
+                // NORMALIZE IMAGE:
+                // 1. Resize to max 1600px width (prevents huge images)
+                // 2. Force PNG format (standardizes uploads)
+                // 3. Ensure RGB/RGBA (removes CMYK/16-bit issues)
+                fileBuffer = await sharp(inputBuffer)
+                    .resize({ width: 1600, withoutEnlargement: true })
+                    .toFormat("png")
+                    .ensureAlpha()
+                    .toBuffer();
 
-            if (fileLength > 5 * 1024 * 1024) {
-                return new NextResponse("Image exceeds 5MB limit.", { status: 400 })
+                fileLength = fileBuffer.length;
+                console.log(`Image normalized! Original: ${headerImageFile.size}, New: ${fileLength}`);
+
+                if (fileLength > 5 * 1024 * 1024) {
+                    return new NextResponse("Image exceeds 5MB limit after processing.", { status: 400 })
+                }
+            } catch (err: any) {
+                console.error("Image processing failed:", err);
+                return new NextResponse(`Failed to process image: ${err.message}`, { status: 400 });
             }
         } else {
             return new NextResponse("Header image file is required.", { status: 400 })
