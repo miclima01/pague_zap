@@ -149,4 +149,36 @@ export class WhatsAppTemplateService {
         const data = await response.json();
         return data.data?.[0] || null;
     }
+
+    async getTemplates(wabaId: string, limit: number = 100): Promise<any> {
+        const url = `${this.baseUrl}/${wabaId}/message_templates?fields=name,status,language,category,id,components&limit=${limit}`;
+        const response = await fetch(url, { headers: this.headers });
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Failed to fetch templates: ${error}`);
+        }
+
+        return await response.json();
+    }
+
+    async deleteTemplate(wabaId: string, templateName: string): Promise<boolean> {
+        // Meta API requires deleting by NAME + ID usually, but for WABA templates delete is often by name via DELETE /{waba_id}/message_templates?name=xyz
+        const url = `${this.baseUrl}/${wabaId}/message_templates?name=${templateName}`;
+
+        console.log(`Deleting template: ${templateName}`);
+
+        const response = await fetch(url, {
+            method: "DELETE",
+            headers: this.headers
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            console.error(`Failed to delete template: ${error}`);
+            throw new Error(`Failed to delete template: ${error}`);
+        }
+
+        return true;
+    }
 }
