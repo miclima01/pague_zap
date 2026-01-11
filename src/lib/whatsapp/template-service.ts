@@ -82,7 +82,7 @@ export class WhatsAppTemplateService {
         const response = await fetch(url, {
             method: "POST",
             headers: headers,
-            body: new Blob([fileBuffer])
+            body: new Blob([new Uint8Array(fileBuffer)])
         });
 
         if (!response.ok) {
