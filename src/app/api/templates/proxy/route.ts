@@ -77,15 +77,21 @@ export async function POST(req: Request) {
                 const arrayBuffer = await headerImageFile.arrayBuffer();
                 const inputBuffer = Buffer.from(arrayBuffer);
 
-                // NORMALIZE IMAGE:
-                // 1. Resize to max 1600px width
-                // 2. Force PNG format (standardizes uploads)
-                // 3. Ensure RGB/RGBA (removes CMYK/16-bit issues)
+                // NORMALIZE IMAGE (Production Grade):
+                // 1. Rotate (fix orientation)
+                // 2. Resize to max 1600px width
+                // 3. Flatten (remove alpha, set white background) for JPEG compatibility
+                // 4. Force JPEG format (Standard for WhatsApp Headers)
                 fileBuffer = await sharp(inputBuffer)
+                    .rotate()
                     .resize({ width: 1600, withoutEnlargement: true })
-                    .toFormat("png")
-                    .ensureAlpha()
+                    .flatten({ background: "#ffffff" })
+                    .toFormat("jpeg", { quality: 85, mozjpeg: true })
                     .toBuffer();
+
+                // Update metadata for upload
+                mimeType = "image/jpeg";
+                fileName = "header.jpg";
 
                 fileLength = fileBuffer.length;
                 console.log(`Image normalized! Original: ${headerImageFile.size}, New: ${fileLength}`);
