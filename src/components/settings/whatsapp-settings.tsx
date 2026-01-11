@@ -28,6 +28,7 @@ export function WhatsAppSettings() {
     phoneNumberId: '',
     whatsappToken: '',
     businessId: '',
+    appId: '',
     appSecret: '',
     verifyToken: '',
   })
@@ -52,6 +53,7 @@ export function WhatsAppSettings() {
           whatsappPhoneNumberId: data.phoneNumberId,
           whatsappToken: data.whatsappToken,
           whatsappBusinessId: data.businessId,
+          whatsappAppId: data.appId,
           whatsappAppSecret: data.appSecret,
           whatsappVerifyToken: data.verifyToken,
         }),
@@ -104,6 +106,7 @@ export function WhatsAppSettings() {
               phoneNumberId: data.whatsappPhoneNumberId || '',
               whatsappToken: data.whatsappToken || '',
               businessId: data.whatsappBusinessId || '',
+              appId: data.whatsappAppId || '',
               appSecret: data.whatsappAppSecret || '',
               verifyToken: newToken
             }
@@ -115,6 +118,7 @@ export function WhatsAppSettings() {
               phoneNumberId: data.whatsappPhoneNumberId || '',
               whatsappToken: data.whatsappToken || '',
               businessId: data.whatsappBusinessId || '',
+              appId: data.whatsappAppId || '',
               appSecret: data.whatsappAppSecret || '',
               verifyToken: data.whatsappVerifyToken || '',
             })
@@ -274,6 +278,18 @@ export function WhatsAppSettings() {
               Coloque este token no campo &quot;Verificar token&quot; na Meta.
             </p>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="appId">App ID (Meta App)</Label>
+          <Input
+            id="appId"
+            value={formData.appId}
+            onChange={(e) => setFormData({ ...formData, appId: e.target.value })}
+            placeholder="Ex: 13426..."
+            autoComplete="off"
+          />
+          <p className="text-sm text-muted-foreground">O ID do seu Aplicativo no painel da Meta.</p>
         </div>
 
         <div className="space-y-2">

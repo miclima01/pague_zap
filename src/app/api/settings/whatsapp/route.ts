@@ -15,13 +15,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const {
-      whatsappPhoneNumberId,
-      whatsappToken,
-      whatsappBusinessId,
-      whatsappAppSecret,
-      whatsappVerifyToken
-    } = body
+    const { whatsappPhoneNumberId, whatsappToken, whatsappBusinessId, whatsappAppId, whatsappAppSecret, whatsappVerifyToken } = body
 
     console.log("Settings Update Request - User:", session.user.id);
     console.log("Payload:", { whatsappBusinessId, whatsappToken: whatsappToken ? "***" : "null" });
@@ -33,6 +27,7 @@ export async function PUT(request: NextRequest) {
         whatsappPhoneNumberId: whatsappPhoneNumberId || null,
         whatsappToken: whatsappToken || null,
         whatsappBusinessId: whatsappBusinessId || null,
+        whatsappAppId: whatsappAppId || null, // Added whatsappAppId
         whatsappAppSecret: whatsappAppSecret || null,
         whatsappVerifyToken: whatsappVerifyToken || null,
       },

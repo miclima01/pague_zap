@@ -18,6 +18,7 @@ export async function POST(req: Request) {
             select: {
                 whatsappToken: true,
                 whatsappBusinessId: true,
+                whatsappAppId: true,
                 // We use global App ID (env) + User Token (DB)
             }
         })
@@ -27,13 +28,14 @@ export async function POST(req: Request) {
         }
 
         // Initialize Service
-        // Use Global App ID (env) + User Token (DB)
-        const globalAppId = process.env.META_APP_ID
-        if (!globalAppId) {
-            return NextResponse.json({ detail: "Server misconfiguration: META_APP_ID missing (Add to Vercel Env Vars)" }, { status: 500 })
+        // Use User App ID (DB) if available, otherwise Global (Env)
+        const appId = user.whatsappAppId || process.env.META_APP_ID
+
+        if (!appId) {
+            return NextResponse.json({ detail: "App ID not configured. Please set it in Settings > WhatsApp or Env Vars." }, { status: 500 })
         }
 
-        const service = new WhatsAppTemplateService(globalAppId, user.whatsappToken);
+        const service = new WhatsAppTemplateService(appId, user.whatsappToken);
 
         const formData = await req.formData()
 

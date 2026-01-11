@@ -20,6 +20,7 @@ model User {
   whatsappPhoneNumberId String?
   whatsappToken         String?
   whatsappBusinessId    String?
+  whatsappAppId         String?   // ID do App (Meta)
   whatsappAppSecret     String?   // Segredo do App (para validação de assinatura)
   whatsappVerifyToken   String?   // Token de verificação do Webhook
   
