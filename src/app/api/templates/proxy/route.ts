@@ -30,7 +30,7 @@ export async function POST(req: Request) {
         // Use Global App ID (env) + User Token (DB)
         const globalAppId = process.env.META_APP_ID
         if (!globalAppId) {
-            return new NextResponse("Server misconfiguration: META_APP_ID missing", { status: 500 })
+            return NextResponse.json({ detail: "Server misconfiguration: META_APP_ID missing (Add to Vercel Env Vars)" }, { status: 500 })
         }
 
         const service = new WhatsAppTemplateService(globalAppId, user.whatsappToken);
