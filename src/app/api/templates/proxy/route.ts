@@ -121,7 +121,7 @@ export async function POST(req: Request) {
                 "buttons": [
                     {
                         "type": "ORDER_DETAILS",
-                        "text": "Review and Pay"
+                        "text": "Copy Pix code"
                     }
                 ]
             });
