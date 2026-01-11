@@ -82,6 +82,12 @@ export class WhatsAppTemplateService {
             "file_offset": "0"
         };
 
+        const response = await fetch(url, {
+            method: "POST",
+            headers: headers,
+            body: formData
+        });
+
         if (!response.ok) {
             const text = await response.text();
             console.error(`File upload failed: ${text}`);
