@@ -89,7 +89,7 @@ export class WhatsAppTemplateService {
         const response = await fetch(url, {
             method: "POST",
             headers: headers,
-            body: fileBuffer // Send raw buffer directly
+            body: new Uint8Array(fileBuffer) // Send raw buffer as Uint8Array for type compatibility
         });
 
         if (!response.ok) {
