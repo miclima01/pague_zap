@@ -131,7 +131,11 @@ export default function CreateTemplateForm({ wabaId }: { wabaId: string }) {
                             <AlertTitle>Success!</AlertTitle>
                             <AlertDescription>
                                 Template ID: {result.data?.id}
-                                <div className="text-xs mt-2 text-gray-500">Trace ID: {result.meta_trace_id}</div>
+                                <div className="mt-4">
+                                    <Button size="sm" variant="outline" onClick={() => window.location.href = '/whatsapp-templates'}>
+                                        Voltar para Lista
+                                    </Button>
+                                </div>
                             </AlertDescription>
                         </Alert>
                     )}
