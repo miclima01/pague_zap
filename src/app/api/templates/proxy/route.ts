@@ -157,14 +157,6 @@ export async function POST(req: Request) {
         // 4. Create Template
         const result = await service.createMessageTemplate(wabaId, payload);
 
-        // VERIFICATION LOG: Fetch back the template to see what was saved
-        try {
-            const savedTemplate = await service.getMessageTemplate(wabaId, name);
-            console.log(`VERIFICATION: Saved Template Components: ${JSON.stringify(savedTemplate?.components, null, 2)}`);
-        } catch (verErr) {
-            console.error("Verification fetch failed:", verErr);
-        }
-
         // Return result directly
         return NextResponse.json(result);
 
