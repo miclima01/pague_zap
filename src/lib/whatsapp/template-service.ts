@@ -73,36 +73,23 @@ export class WhatsAppTemplateService {
 
         console.log(`Uploading bytes to session ${uploadSessionId} (${mimeType}, ${fileName})`);
 
-        // MANUAL MULTIPART CONSTRUCTION (To bypass FormData potential corruption)
-        const boundary = "----WhatsAppUploadBoundary" + Math.random().toString(36).substring(2);
+        console.log(`Uploading bytes to session ${uploadSessionId} (${mimeType}, ${fileName})`);
 
-        // Header part
-        const preAmble = `--${boundary}\r\n` +
-            `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
-            `Content-Type: ${mimeType}\r\n\r\n`;
+        // RAW BINARY UPLOAD (No Multipart/FormData)
+        // This is the most "pure" way to send bytes for a resumable upload chunk.
 
-        // Footer part
-        const postAmble = `\r\n--${boundary}--\r\n`;
-
-        // Combine into single Buffer
-        const bodyBuffer = Buffer.concat([
-            Buffer.from(preAmble, 'utf-8'),
-            fileBuffer,
-            Buffer.from(postAmble, 'utf-8')
-        ]);
-
-        console.log(`Session Upload - Payload Size: ${bodyBuffer.length} (File: ${fileBuffer.length})`);
+        console.log(`Session Upload - Payload Size: ${fileBuffer.length}`);
 
         const headers: Record<string, string> = {
             "Authorization": `Bearer ${this.token}`,
             "file_offset": "0",
-            "Content-Type": `multipart/form-data; boundary=${boundary}`
+            "Content-Type": mimeType // Explicitly tell Meta this is the image
         };
 
         const response = await fetch(url, {
             method: "POST",
             headers: headers,
-            body: bodyBuffer // Send raw buffer with manual boundary
+            body: fileBuffer // Send raw buffer directly
         });
 
         if (!response.ok) {
