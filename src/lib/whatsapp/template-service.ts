@@ -73,17 +73,14 @@ export class WhatsAppTemplateService {
 
         console.log(`Uploading bytes to session ${uploadSessionId} (${mimeType}, ${fileName})`);
 
-        // Switch to Raw Binary Upload to avoid FormData/Multipart boundary issues
-        const headers = {
+        const formData = new FormData();
+        const blob = new Blob([new Uint8Array(fileBuffer)], { type: mimeType });
+        formData.append("file", blob, fileName);
+
+        const headers: Record<string, string> = {
             "Authorization": `Bearer ${this.token}`,
             "file_offset": "0"
         };
-
-        const response = await fetch(url, {
-            method: "POST",
-            headers: headers,
-            body: new Blob([new Uint8Array(fileBuffer)])
-        });
 
         if (!response.ok) {
             const text = await response.text();
